@@ -1,0 +1,280 @@
+--[[
+    ⚠️ سكربت قائمة التحذير ⚠️
+    يعمل على Delta Executor
+    يحاكي رسالة حظر مع اهتزاز الشاشة
+--]]
+
+-- تنظيف السكربت القديم
+if game.CoreGui:FindFirstChild("WarningGui") then
+    game.CoreGui.WarningGui:Destroy()
+end
+
+-- إنشاء الواجهة
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "WarningGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = game.CoreGui
+
+-- الخلفية المعتمة
+local Overlay = Instance.new("Frame")
+Overlay.Size = UDim2.new(1, 0, 1, 0)
+Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Overlay.BackgroundTransparency = 0.4
+Overlay.BorderSizePixel = 0
+Overlay.ZIndex = 1
+Overlay.Parent = ScreenGui
+
+-- الإطار الرئيسي للقائمة
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 500, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -250, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
+MainFrame.BorderSizePixel = 0
+MainFrame.ZIndex = 2
+MainFrame.Parent = ScreenGui
+
+-- حواف الإطار
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
+
+-- إطار الحدود الحمراء
+local Stroke = Instance.new("UIStroke")
+Stroke.Color = Color3.fromRGB(255, 0, 0)
+Stroke.Thickness = 3
+Stroke.Parent = MainFrame
+
+-- شريط العنوان
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 50)
+TitleBar.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+TitleBar.BorderSizePixel = 0
+TitleBar.ZIndex = 3
+TitleBar.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 12)
+TitleCorner.Parent = TitleBar
+
+-- إخفاء الزوايا السفلية لشريط العنوان
+local FixCorner = Instance.new("Frame")
+FixCorner.Size = UDim2.new(1, 0, 0, 15)
+FixCorner.Position = UDim2.new(0, 0, 1, -15)
+FixCorner.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+FixCorner.BorderSizePixel = 0
+FixCorner.ZIndex = 3
+FixCorner.Parent = TitleBar
+
+-- نص العنوان
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, 0, 1, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "⚠️ تحذير أمني ⚠️"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextScaled = true
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.ZIndex = 4
+TitleLabel.Parent = TitleBar
+
+local TitlePadding = Instance.new("UIPadding")
+TitlePadding.PaddingTop = UDim.new(0, 8)
+TitlePadding.PaddingBottom = UDim.new(0, 8)
+TitlePadding.Parent = TitleLabel
+
+-- أيقونة التحذير الكبيرة
+local WarningIcon = Instance.new("TextLabel")
+WarningIcon.Size = UDim2.new(0, 100, 0, 100)
+WarningIcon.Position = UDim2.new(0, 30, 0, 70)
+WarningIcon.BackgroundTransparency = 1
+WarningIcon.Text = "⛔"
+WarningIcon.TextColor3 = Color3.fromRGB(255, 0, 0)
+WarningIcon.TextScaled = true
+WarningIcon.Font = Enum.Font.GothamBold
+WarningIcon.ZIndex = 4
+WarningIcon.Parent = MainFrame
+
+-- نص التحذير
+local WarningText = Instance.new("TextLabel")
+WarningText.Size = UDim2.new(1, -160, 0, 130)
+WarningText.Position = UDim2.new(0, 145, 0, 70)
+WarningText.BackgroundTransparency = 1
+WarningText.Text = "تم رصد نشاط مشبوه!\n\nسيتم حظر هذا الحساب والجهاز\nمن لعبة Roblox نهائياً.\n\nهذا التحذير الأخير!"
+WarningText.TextColor3 = Color3.fromRGB(255, 200, 200)
+WarningText.TextScaled = true
+WarningText.Font = Enum.Font.GothamBold
+WarningText.TextWrapped = true
+WarningText.TextXAlignment = Enum.TextXAlignment.Left
+WarningText.TextYAlignment = Enum.TextYAlignment.Top
+WarningText.ZIndex = 4
+WarningText.Parent = MainFrame
+
+local TextPadding = Instance.new("UIPadding")
+TextPadding.PaddingRight = UDim.new(0, 10)
+TextPadding.Parent = WarningText
+
+-- نص العد التنازلي
+local CountdownLabel = Instance.new("TextLabel")
+CountdownLabel.Size = UDim2.new(1, -40, 0, 40)
+CountdownLabel.Position = UDim2.new(0, 20, 0, 215)
+CountdownLabel.BackgroundTransparency = 1
+CountdownLabel.Text = "الحظر خلال: 10"
+CountdownLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+CountdownLabel.TextScaled = true
+CountdownLabel.Font = Enum.Font.GothamBold
+CountdownLabel.ZIndex = 4
+CountdownLabel.Parent = MainFrame
+
+-- شريط التقدم
+local ProgressBg = Instance.new("Frame")
+ProgressBg.Size = UDim2.new(1, -40, 0, 20)
+ProgressBg.Position = UDim2.new(0, 20, 0, 265)
+ProgressBg.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+ProgressBg.BorderSizePixel = 0
+ProgressBg.ZIndex = 3
+ProgressBg.Parent = MainFrame
+
+local ProgressCorner = Instance.new("UICorner")
+ProgressCorner.CornerRadius = UDim.new(0, 6)
+ProgressCorner.Parent = ProgressBg
+
+local ProgressBar = Instance.new("Frame")
+ProgressBar.Size = UDim2.new(1, 0, 1, 0)
+ProgressBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+ProgressBar.BorderSizePixel = 0
+ProgressBar.ZIndex = 4
+ProgressBar.Parent = ProgressBg
+
+local ProgressBarCorner = Instance.new("UICorner")
+ProgressBarCorner.CornerRadius = UDim.new(0, 6)
+ProgressBarCorner.Parent = ProgressBar
+
+-- ===== تأثير اهتزاز الشاشة =====
+local Camera = workspace.CurrentCamera
+local OriginalCFrame = Camera.CFrame
+
+local Shaking = true
+local ShakeIntensity = 0.5
+
+local function ShakeCamera()
+    spawn(function()
+        while Shaking do
+            local X = (math.random() - 0.5) * ShakeIntensity
+            local Y = (math.random() - 0.5) * ShakeIntensity
+            local Z = (math.random() - 0.5) * ShakeIntensity
+            
+            Camera.CFrame = OriginalCFrame * CFrame.new(X, Y, Z)
+            wait(0.02)
+        end
+        Camera.CFrame = OriginalCFrame
+    end)
+end
+
+ShakeCamera()
+
+-- اهتزاز الإطار نفسه
+local OriginalPos = MainFrame.Position
+spawn(function()
+    while Shaking do
+        local offsetX = (math.random() - 0.5) * 10
+        local offsetY = (math.random() - 0.5) * 10
+        MainFrame.Position = OriginalPos + UDim2.new(0, offsetX, 0, offsetY)
+        wait(0.03)
+    end
+    MainFrame.Position = OriginalPos
+end)
+
+-- وميض الألوان
+spawn(function()
+    while Shaking do
+        Stroke.Color = Color3.fromRGB(255, 0, 0)
+        wait(0.2)
+        Stroke.Color = Color3.fromRGB(255, 255, 0)
+        wait(0.2)
+    end
+end)
+
+-- اهتزاز أيقونة التحذير
+spawn(function()
+    while Shaking do
+        WarningIcon.Rotation = math.random(-15, 15)
+        wait(0.05)
+    end
+end)
+
+-- ===== العد التنازلي =====
+local TimeLeft = 10
+local TotalTime = 10
+
+spawn(function()
+    for i = TimeLeft, 0, -1 do
+        if not ScreenGui.Parent then break end
+        CountdownLabel.Text = "الحظر خلال: " .. i
+        
+        -- صوت تنبيه
+        pcall(function()
+            local Sound = Instance.new("Sound")
+            Sound.SoundId = "rbxassetid://131961136"
+            Sound.Volume = 0.5
+            Sound.Parent = ScreenGui
+            Sound:Play()
+            game:GetService("Debris"):AddItem(Sound, 2)
+        end)
+        
+        -- تقليل شريط التقدم
+        local tween = game:GetService("TweenService"):Create(
+            ProgressBar,
+            TweenInfo.new(0.9, Enum.EasingStyle.Linear),
+            {Size = UDim2.new((i - 1) / TotalTime, 0, 1, 0)}
+        )
+        tween:Play()
+        
+        wait(1)
+    end
+    
+    -- انتهى العد
+    if ScreenGui.Parent then
+        WarningText.Text = "🚫 تم حظر الحساب والجهاز 🚫"
+        CountdownLabel.Text = "تم الحظر بنجاح"
+        CountdownLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+        ShakeIntensity = 1.5
+        
+        wait(3)
+        Shaking = false
+        ScreenGui:Destroy()
+    end
+end)
+
+-- زر الإغلاق (اختياري - احذفه إذا تبي ما يقدر يقفل)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextScaled = true
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.BorderSizePixel = 0
+CloseBtn.ZIndex = 5
+CloseBtn.Parent = TitleBar
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseBtn
+
+CloseBtn.MouseButton1Click:Connect(function()
+    Shaking = false
+    Camera.CFrame = OriginalCFrame
+    ScreenGui:Destroy()
+end)
+
+-- صوت التحذير عند البدء
+pcall(function()
+    local Sound = Instance.new("Sound")
+    Sound.SoundId = "rbxassetid://1837866992"
+    Sound.Volume = 1
+    Sound.Parent = ScreenGui
+    Sound:Play()
+    game:GetService("Debris"):AddItem(Sound, 5)
+end)
