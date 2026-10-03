@@ -2373,8 +2373,10 @@ end)
 
 notify("🎃 AMT MEGA v33.0", "Support شات حقيقي + polling!")
 
-print("✅ AMT MEGA HUB v33.0 Loaded 🎃")
+print("by:AMT")
 print("👑 Rank: " .. MY_RANK .. " | Power: " .. MY_POWER)
-print("💬 Support: شات حقيقي + polling كل ثانيتين")
-print("🎯 Aimbot: على القاتل فقط")
-print("🔫 Auto Grab Gun: موجود")
+print("by:YZT")
+print("هالوين ابديت")
+print("by:AYFTEAM")
+print("رساله: ترا في قسم حاص لي الادمن")
+
