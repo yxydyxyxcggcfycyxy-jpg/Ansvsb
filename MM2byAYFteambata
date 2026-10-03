@@ -1,7 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════════════
--- 🏆 AMT MEGA SCRIPT v21.0 — ULTIMATE + SAFE BLOCK
--- 👑 Owners: ztjzfzjrh + tegrugjvd
--- ✅ Farm الأصلي | ✅ ESP مصلّح | ✅ نظام رتب | ✅ Auto Engage + بلوكة أمان
+-- 🎃 AMT MEGA SCRIPT v33.0 — SUPPORT FIXED
+-- 👑 Owners: ztjzfzjrh + tegrugjvd + AMTbadboy
+-- ✅ Support شات حقيقي (polling) | ✅ AI | ✅ Owner Panel | ✅ Auto Farm
+-- 🎃 Theme: Orange & Black
 -- ═══════════════════════════════════════════════════════════════════════
 local RS = game:GetService("ReplicatedStorage")
 local UIS = game:GetService("UserInputService")
@@ -15,7 +16,22 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local TextChatService = game:GetService("TextChatService")
 local LocalPlayer = Players.LocalPlayer
+
+local function safeParent(gui)
+	if gethui then
+		local ok, hui = pcall(gethui)
+		if ok and hui then
+			local ok2 = pcall(function() gui.Parent = hui end)
+			if ok2 then return end
+		end
+	end
+	local ok3 = pcall(function() gui.Parent = LocalPlayer:WaitForChild("PlayerGui", 5) end)
+	if not ok3 then
+		pcall(function() gui.Parent = CoreGui end)
+	end
+end
 
 local function getRequest()
 	if syn and syn.request then return syn.request end
@@ -27,43 +43,14 @@ end
 local httpRequest = getRequest()
 
 -- ═══════════════════════════════════════════════════════════════════════
--- 🛡️ SCRIPT PROTECTION
--- ═══════════════════════════════════════════════════════════════════════
-local PROTECTION = { enabled = true, tamperCount = 0 }
-
-task.spawn(function()
-	while PROTECTION.enabled do
-		task.wait(1)
-		pcall(function()
-			if not CoreGui:FindFirstChild("AMT_ESP") then PROTECTION.tamperCount = PROTECTION.tamperCount + 1 end
-			if not CoreGui:FindFirstChild("AMT_HeadTags") then PROTECTION.tamperCount = PROTECTION.tamperCount + 1 end
-			if PROTECTION.tamperCount > 5 then PROTECTION.tamperCount = 0 end
-		end)
-	end
-end)
-
-task.spawn(function()
-	while PROTECTION.enabled do
-		task.wait(0.5)
-		pcall(function()
-			if type(_G.AMT) ~= "table" then _G.AMT = {} end
-			if _G.AMT.SpeedValue and (_G.AMT.SpeedValue < 1 or _G.AMT.SpeedValue > 1000) then
-				_G.AMT.SpeedValue = 35
-			end
-		end)
-	end
-end)
-
-print("🛡️ Protection Active")
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🔑 KEYFORGE
+-- 🔑 KEYFORGE CONFIG
 -- ═══════════════════════════════════════════════════════════════════════
 local KF_VERIFY_URL = "https://secure-key-system.lovable.app/api/public/v1/verify"
 local KF_PROJECT_ID = "3c3a74de358542e7"
 local KF_API_KEY = "ks_48c74b0e3da547d88d5e8ae31525d585fc5ef7c41ca5bedc"
 local KF_GET_KEY_URL = "https://secure-key-system.lovable.app/get/3c3a74de358542e7"
 local KF_MSG_URL = "https://secure-key-system.lovable.app/api/public/v1/messages"
+local DISCORD_LINK = "https://discord.gg/HWGqaEetd"
 
 local HWID = "UNKNOWN_HWID"
 pcall(function()
@@ -90,8 +77,80 @@ local function verifyKey(key)
 	return data.valid == true, data.message or "Unknown"
 end
 
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1533219330618032320/cMvjVqvvsN1_u2B3IISKLYfXTFpBEBhmeRSHte2brNLxQyarPcHM5U7zfZYd2XMssdL2"
-local DISCORD_LINK = "https://discord.gg/HWGqaEetd"
+-- ═══════════════════════════════════════════════════════════════════════
+-- 🎫 SUPPORT SYSTEM (نفس السكربت الأصلي — polling حقيقي)
+-- ═══════════════════════════════════════════════════════════════════════
+local lastSeen = nil
+local primed = false
+local shownMessages = {}
+
+local function decodeMsgResponse(res)
+	if not res then return nil end
+	local okJ, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
+	if not okJ then return nil end
+	if res.StatusCode and res.StatusCode >= 400 then return nil end
+	return data
+end
+
+local function sendSupport(text, callback)
+	if not httpRequest then
+		if callback then callback(false, nil) end
+		return
+	end
+	task.spawn(function()
+		local ok, res = pcall(httpRequest, {
+			Url = KF_MSG_URL, Method = "POST",
+			Headers = {
+				["Content-Type"] = "application/json",
+				["Authorization"] = "Bearer " .. KF_API_KEY,
+			},
+			Body = HttpService:JSONEncode({
+				project_id = KF_PROJECT_ID,
+				player_user_id = LocalPlayer.UserId,
+				player_name = LocalPlayer.Name,
+				message = text,
+			}),
+		})
+		if not ok then if callback then callback(false, nil) end return end
+		local data = decodeMsgResponse(res)
+		if not data then if callback then callback(false, nil) end return end
+		if callback then callback(true, data) end
+	end)
+end
+
+local function pollReplies()
+	if not httpRequest then return end
+	local url = KF_MSG_URL .. "?project_id=" .. KF_PROJECT_ID .. "&player_user_id=" .. LocalPlayer.UserId
+	if lastSeen then url = url .. "&since=" .. HttpService:UrlEncode(lastSeen) end
+	local ok, res = pcall(httpRequest, {
+		Url = url, Method = "GET",
+		Headers = { ["Authorization"] = "Bearer " .. KF_API_KEY },
+	})
+	if not ok then return end
+	local data = decodeMsgResponse(res)
+	if not data then return end
+	for _, m in ipairs(data.messages or {}) do
+		lastSeen = m.created_at
+	end
+	primed = true
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- 🛡️ PROTECTION
+-- ═══════════════════════════════════════════════════════════════════════
+task.spawn(function()
+	while true do
+		task.wait(1)
+		pcall(function()
+			if type(_G.AMT) ~= "table" then _G.AMT = {} end
+			if _G.AMT.SpeedValue and (_G.AMT.SpeedValue < 1 or _G.AMT.SpeedValue > 1000) then
+				_G.AMT.SpeedValue = 35
+			end
+		end)
+	end
+end)
+
+print("🎃 Protection Active")
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- 👑 RANK SYSTEM
@@ -103,24 +162,25 @@ local DEFAULT_RANKS = {
 	["ztjzfzjrh"]    = "Owner",
 	["tegrugjvd"]    = "Owner",
 	["AMTbadboy"]    = "Owner",
-	["Brooknoob_55"] = "CoOwner",
-	["1KamRP"]       = "BlackMark",
 }
 
 local RANK_POWER = {
-	["Owner"]=100, ["CoOwner"]=90, ["Elite"]=80, ["Helper"]=60,
-	["BlackMark"]=50, ["VIP"]=40, ["Admin"]=30, ["Member"]=0,
+	["Member"]=0, ["VIP"]=10, ["Elite"]=20, ["Helper"]=30,
+	["Mod"]=40, ["SrMod"]=50, ["Admin"]=60, ["SrAdmin"]=70,
+	["CoOwner"]=90, ["Owner"]=100,
 }
 
 local RANK_DATA = {
-	Owner     = { emoji = "👑", color = Color3.fromRGB(255, 215, 0),   gradient = {Color3.fromRGB(255,215,0), Color3.fromRGB(255,100,0)} },
-	CoOwner   = { emoji = "🛡️", color = Color3.fromRGB(255, 100, 200), gradient = {Color3.fromRGB(255,100,200), Color3.fromRGB(150,50,255)} },
-	Elite     = { emoji = "💠", color = Color3.fromRGB(0, 240, 255),   gradient = {Color3.fromRGB(0,240,255), Color3.fromRGB(0,120,255)} },
-	Helper    = { emoji = "🎯", color = Color3.fromRGB(80, 220, 120),  gradient = {Color3.fromRGB(80,220,120), Color3.fromRGB(0,180,100)} },
-	BlackMark = { emoji = "⚫", color = Color3.fromRGB(150, 150, 150), gradient = {Color3.fromRGB(50,50,50), Color3.fromRGB(150,150,150)} },
-	VIP       = { emoji = "💎", color = Color3.fromRGB(255, 100, 200), gradient = {Color3.fromRGB(255,100,200), Color3.fromRGB(255,215,0)} },
-	Admin     = { emoji = "🔷", color = Color3.fromRGB(100, 150, 255), gradient = {Color3.fromRGB(100,150,255), Color3.fromRGB(50,100,200)} },
-	Member    = { emoji = "🎫", color = Color3.fromRGB(200, 200, 200), gradient = {Color3.fromRGB(180,180,180), Color3.fromRGB(120,120,120)} },
+	Owner    = { emoji = "👑", color = Color3.fromRGB(255, 140, 0),   gradient = {Color3.fromRGB(255,140,0), Color3.fromRGB(200,60,0)} },
+	CoOwner  = { emoji = "🛡️", color = Color3.fromRGB(255, 180, 40),  gradient = {Color3.fromRGB(255,180,40), Color3.fromRGB(200,100,0)} },
+	SrAdmin  = { emoji = "🔱", color = Color3.fromRGB(255, 100, 0),   gradient = {Color3.fromRGB(255,100,0), Color3.fromRGB(150,30,0)} },
+	Admin    = { emoji = "🔷", color = Color3.fromRGB(255, 200, 100), gradient = {Color3.fromRGB(255,200,100), Color3.fromRGB(180,120,0)} },
+	SrMod    = { emoji = "💠", color = Color3.fromRGB(255, 160, 40),  gradient = {Color3.fromRGB(255,160,40), Color3.fromRGB(200,80,0)} },
+	Mod      = { emoji = "⚔️", color = Color3.fromRGB(255, 120, 60),  gradient = {Color3.fromRGB(255,120,60), Color3.fromRGB(150,50,10)} },
+	Helper   = { emoji = "🎯", color = Color3.fromRGB(255, 200, 60),  gradient = {Color3.fromRGB(255,200,60), Color3.fromRGB(200,140,0)} },
+	Elite    = { emoji = "🔥", color = Color3.fromRGB(255, 80, 0),    gradient = {Color3.fromRGB(255,80,0), Color3.fromRGB(150,20,0)} },
+	VIP      = { emoji = "⭐", color = Color3.fromRGB(255, 180, 60),  gradient = {Color3.fromRGB(255,180,60), Color3.fromRGB(200,100,0)} },
+	Member   = { emoji = "🎫", color = Color3.fromRGB(180, 180, 180), gradient = {Color3.fromRGB(180,180,180), Color3.fromRGB(100,100,100)} },
 }
 
 local RANKS = {}
@@ -135,6 +195,10 @@ pcall(function()
 	end
 end)
 
+RANKS["ztjzfzjrh"] = "Owner"
+RANKS["tegrugjvd"] = "Owner"
+RANKS["AMTbadboy"] = "Owner"
+
 local function saveRanks()
 	pcall(function()
 		if writefile then writefile(RANKS_FILE, HttpService:JSONEncode(RANKS)) end
@@ -144,21 +208,17 @@ end
 local function getRank(name) return RANKS[name] or "Member" end
 local function getPower(name) return RANK_POWER[getRank(name)] or 0 end
 
-local function canManage(requesterName, targetRank)
-	local reqPower = getPower(requesterName)
-	local targetPower = RANK_POWER[targetRank] or 0
-	if reqPower >= 100 then return true end
-	if reqPower >= 80 and targetPower < 100 then return true end
-	return false
-end
-
-local MY_RANK = getRank(LocalPlayer.Name)
-local MY_POWER = getPower(LocalPlayer.Name)
-local IS_OWNER = MY_POWER >= 100
-local IS_COOWNER = MY_POWER >= 90
-local IS_ELITE = MY_POWER >= 80
-local IS_STAFF = MY_POWER >= 30
-local IS_VIP = MY_POWER >= 40
+MY_RANK = getRank(LocalPlayer.Name)
+MY_POWER = getPower(LocalPlayer.Name)
+IS_OWNER = MY_POWER >= 100
+IS_COOWNER = MY_POWER >= 90
+IS_SRADMIN = MY_POWER >= 70
+IS_ADMIN = MY_POWER >= 60
+IS_SRMOD = MY_POWER >= 50
+IS_MOD = MY_POWER >= 40
+IS_HELPER = MY_POWER >= 30
+IS_ELITE = MY_POWER >= 20
+IS_VIP = MY_POWER >= 10
 
 local KICKED_USERS = {}
 pcall(function()
@@ -175,30 +235,23 @@ end
 
 if KICKED_USERS[LocalPlayer.Name] then
 	local kd = KICKED_USERS[LocalPlayer.Name]
-	local msg = "🚫 تم طردك من السكربت\nالسبب: " .. tostring(kd.reason) .. "\nبواسطة: " .. tostring(kd.by)
-	warn(msg)
+	local msg = "🚫 تم طردك من السكربت\nالسبب: " .. tostring(kd.reason)
 	task.wait(0.5)
 	pcall(function() LocalPlayer:Kick(msg) end)
 	return
 end
 
--- ═══ Colors ═══
+-- ═══ 🎃 Colors ═══
 local C = {
-	BeachSand = Color3.fromRGB(194, 178, 128),
-	OceanBlue = Color3.fromRGB(0, 105, 148),
-	LightBlue = Color3.fromRGB(0, 150, 200),
-	WhiteSand = Color3.fromRGB(238, 228, 198),
-	Sunset = Color3.fromRGB(255, 140, 80),
-	Coral = Color3.fromRGB(255, 127, 127),
-	Purple = Color3.fromRGB(150, 80, 220),
-	Green = Color3.fromRGB(80, 220, 120),
+	Orange = Color3.fromRGB(255, 140, 0),
+	DarkOrange = Color3.fromRGB(200, 80, 0),
+	LightOrange = Color3.fromRGB(255, 180, 60),
+	Black = Color3.fromRGB(10, 10, 10),
+	DarkBg = Color3.fromRGB(15, 10, 5),
+	CardBg = Color3.fromRGB(25, 18, 8),
 	Red = Color3.fromRGB(255, 60, 60),
+	Green = Color3.fromRGB(80, 220, 120),
 	Yellow = Color3.fromRGB(255, 220, 60),
-	Gold = Color3.fromRGB(255, 215, 0),
-	Pink = Color3.fromRGB(255, 100, 200),
-	Cyan = Color3.fromRGB(0, 240, 255),
-	DarkBg = Color3.fromRGB(12, 16, 24),
-	CardBg = Color3.fromRGB(20, 26, 38),
 }
 
 -- ═══ State ═══
@@ -209,11 +262,13 @@ _G.AMT = {
 	ESPPlayers = false, ESPCoins = false, ESPRoles = false,
 	ESPNames = false, ESPHealth = false, ESPDistance = false,
 	ESPWeapons = false, ESPVIPTags = true,
-	Aimbot = false, KillAura = false, HitboxExpand = false,
-	FlyEnabled = false, InfJump = false, AntiFling = false,
-	FullBright = false, FreezePlayers = false, GodMode = false,
-	AutoGrabGun = false, AutoShootMurderer = false,
-	AutoWin = false, AutoThrowKnife = false,
+	AimbotMurderer = false, AimbotSmooth = 0.25,
+	KillAura = false, KillAuraRange = 15,
+	HitboxSize = 2,
+	FlyEnabled = false, AntiFling = false,
+	FullBright = false,
+	XRay = false,
+	AutoGrabGun = false,
 	AutoEngageEnabled = true,
 	AutoEngageKilled = false,
 	AutoEngageKilling = false,
@@ -226,13 +281,11 @@ local CurrentTween = nil
 local ESPObjects = {}
 local HeadTags = {}
 
--- ═══ Anti-AFK ═══
 LocalPlayer.Idled:Connect(function()
 	VirtualUser:CaptureController()
 	VirtualUser:ClickButton2(Vector2.new())
 end)
 
--- ═══ Noclip ═══
 local noClipConn = nil
 local function EnableNoclip()
 	if noClipConn then pcall(function() noClipConn:Disconnect() end) end
@@ -248,12 +301,11 @@ end
 EnableNoclip()
 LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5) EnableNoclip() end)
 
--- ═══ KillEvent ═══
 local killEvent = RS:FindFirstChild("Remotes") and RS.Remotes:FindFirstChild("Gameplay") and RS.Remotes.Gameplay:FindFirstChild("KillEvent")
 if not killEvent then killEvent = RS:FindFirstChild("KillEvent") end
 
 -- ═══════════════════════════════════════════════════════════════════════
--- 🌾 FARM (الأصلي v18)
+-- 🌾 FARM
 -- ═══════════════════════════════════════════════════════════════════════
 local Platform = Instance.new("Part")
 Platform.Name = "AMT_UndergroundPlatform"
@@ -341,7 +393,7 @@ local function killWithRemote()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer then
 			pcall(function()
-				killEvent:FireServer(player.Name, Color3.fromRGB(25, 225, 25))
+				killEvent:FireServer(player.Name, Color3.fromRGB(255, 140, 0))
 				killEvent:FireServer(player.Name)
 			end)
 		end
@@ -421,32 +473,20 @@ local function farmLoop()
 	end
 end
 
--- ═══ Webhook ═══
-local function SendWebhook(title, description, color)
-	pcall(function()
-		if httpRequest then
-			httpRequest({Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"] = "application/json"},
-				Body = HttpService:JSONEncode({embeds = {{title = title, description = description, color = color or 5814783}}})
-			})
-		end
-	end)
-end
-
 -- ═══════════════════════════════════════════════════════════════════════
--- 🎯 AUTO ENGAGE v3 (بلوكة أمان + وقف فارم + ذبح مستمر)
+-- 🎯 AUTO ENGAGE v3
 -- ═══════════════════════════════════════════════════════════════════════
 _G.AMT.AutoEngageKilling = false
 local _lastCoinCount = 0
 local _lastCoinTime = tick()
 
--- 🧱 بلوكة الأمان
 local SafeBlock = Instance.new("Part")
 SafeBlock.Name = "AMT_SafeBlock"
 SafeBlock.Size = Vector3.new(30, 2, 30)
 SafeBlock.Anchored = true
 SafeBlock.CanCollide = true
-SafeBlock.Transparency = 0.5
-SafeBlock.Color = Color3.fromRGB(0, 255, 100)
+SafeBlock.Transparency = 0.4
+SafeBlock.Color = Color3.fromRGB(255, 140, 0)
 SafeBlock.Material = Enum.Material.Neon
 SafeBlock.Position = Vector3.new(0, 99999, 0)
 SafeBlock.Parent = Workspace
@@ -474,7 +514,6 @@ task.spawn(function()
 				_G.AMT.AutoEngageKilling = false
 				return
 			end
-
 			if not _G.AMT.RoundActive then
 				_G.AMT.AutoEngageKilled = false
 				_G.AMT.AutoEngageKilling = false
@@ -483,55 +522,33 @@ task.spawn(function()
 				SafeBlock.Position = Vector3.new(0, 99999, 0)
 				return
 			end
-
 			if _G.AMT.MyRole ~= "Murderer" then
 				_G.AMT.AutoEngageKilling = false
 				return
 			end
-
-			-- 🟢 وضع الذبح المستمر
 			if _G.AMT.AutoEngageKilling then
 				local char = LocalPlayer.Character
 				if not char then return end
 				local hum = char:FindFirstChildOfClass("Humanoid")
 				if not hum or hum.Health <= 0 then return end
-
-				-- 🧱 إبقاء اللاعب على البلوكة
 				local hrp = char:FindFirstChild("HumanoidRootPart")
-				if hrp and SafeBlock then
-					hrp.CFrame = CFrame.new(SafeBlock.Position + Vector3.new(0, 5, 0))
-				end
-
-				pcall(pullAllPlayers)
-				task.wait(0.15)
-				pcall(equipKnife)
-				task.wait(0.1)
-				pcall(attackAll)
-				task.wait(0.15)
-				pcall(killWithRemote)
-				task.wait(0.15)
+				if hrp and SafeBlock then hrp.CFrame = CFrame.new(SafeBlock.Position + Vector3.new(0, 5, 0)) end
+				pcall(pullAllPlayers); task.wait(0.15)
+				pcall(equipKnife); task.wait(0.1)
+				pcall(attackAll); task.wait(0.15)
+				pcall(killWithRemote); task.wait(0.15)
 				pcall(unfreezeAll)
 				return
 			end
-
 			local collected = _G.AMT.CollectedCoins or 0
 			local target = _G.AMT.TargetCoins or 0
-
 			if collected ~= _lastCoinCount then
 				_lastCoinCount = collected
 				_lastCoinTime = tick()
 			end
-
 			local coinsDone = false
-
-			if target > 0 and collected >= target then
-				coinsDone = true
-			end
-
-			if collected >= 10 and (tick() - _lastCoinTime) > 3 then
-				coinsDone = true
-			end
-
+			if target > 0 and collected >= target then coinsDone = true end
+			if collected >= 10 and (tick() - _lastCoinTime) > 3 then coinsDone = true end
 			if not coinsDone and collected >= 5 then
 				local foundAny = false
 				for _, v in pairs(Workspace:GetDescendants()) do
@@ -542,19 +559,12 @@ task.spawn(function()
 				end
 				if not foundAny then coinsDone = true end
 			end
-
 			if not coinsDone then return end
-
-			-- ✅ ابدأ وضع الذبح
 			_G.AMT.AutoEngageKilling = true
 			_G.AMT.AutoEngageKilled = true
-
-			-- 🔴 وقف الفارم
 			_G.AMT.AutoEnabled = false
 			if CurrentTween then CurrentTween:Cancel(); CurrentTween = nil end
 			Platform.CFrame = CFrame.new(0, 99999, 0)
-
-			-- 🧱 حط البلوكة تحت اللاعب
 			local char = LocalPlayer.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			if hrp then
@@ -563,25 +573,7 @@ task.spawn(function()
 				SafeBlock.Position = Vector3.new(pos.X, pos.Y - 4, pos.Z)
 				hrp.CFrame = CFrame.new(pos.X, pos.Y, pos.Z)
 			end
-
-			-- 🛡️ ثبت اللاعب
 			anchorPlayer()
-
-			if WindUI and _G.AMT.ShowNotifications then
-				WindUI:Notify({
-					Title = "🎯 Auto Engage",
-					Content = "بلوكة أمان تحتك ✓ الفلوس " .. collected .. "/" .. target,
-					Duration = 6,
-					Icon = "shield"
-				})
-			end
-
-			SendWebhook("🎯 Auto Engage",
-				"**Player:** " .. LocalPlayer.Name ..
-				"\n**Rank:** " .. MY_RANK ..
-				"\n**Coins:** " .. collected .. "/" .. target,
-				5763719)
-
 			pcall(pullAllPlayers); task.wait(0.15)
 			pcall(equipKnife); task.wait(0.1)
 			pcall(attackAll); task.wait(0.15)
@@ -598,8 +590,6 @@ LocalPlayer.CharacterAdded:Connect(function()
 	end
 end)
 
-print("🎯 Auto Engage v3: ACTIVE (بلوكة أمان + وقف فارم + ذبح)")
-
 -- ═══════════════════════════════════════════════════════════════════════
 -- 🏷️ HEAD TAGS
 -- ═══════════════════════════════════════════════════════════════════════
@@ -607,7 +597,7 @@ local HeadTagsGui = Instance.new("ScreenGui")
 HeadTagsGui.Name = "AMT_HeadTags"
 HeadTagsGui.ResetOnSpawn = false
 HeadTagsGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-HeadTagsGui.Parent = (gethui and gethui()) or CoreGui
+safeParent(HeadTagsGui)
 
 local function createHeadTag(player)
 	if not player or not player.Parent then return end
@@ -615,7 +605,6 @@ local function createHeadTag(player)
 	local rank = getRank(player.Name)
 	if rank == "Member" then return end
 	if HeadTags[player] then return end
-
 	local rd = RANK_DATA[rank]
 	if not rd then return end
 
@@ -631,7 +620,7 @@ local function createHeadTag(player)
 
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(1, 0, 1, 0)
-	frame.BackgroundColor3 = Color3.fromRGB(6, 4, 12)
+	frame.BackgroundColor3 = Color3.fromRGB(15, 8, 3)
 	frame.BackgroundTransparency = 0.05
 	frame.BorderSizePixel = 0
 	frame.Parent = bb
@@ -639,9 +628,9 @@ local function createHeadTag(player)
 
 	local fg = Instance.new("UIGradient", frame)
 	fg.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 8, 30)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40, 15, 60)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 15, 50)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 15, 5)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 30, 10)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 50, 15)),
 	})
 	fg.Rotation = 45
 
@@ -683,7 +672,7 @@ local function createHeadTag(player)
 	local tg = Instance.new("UIGradient", tagText)
 	tg.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, rd.gradient[1]),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 220, 150)),
 		ColorSequenceKeypoint.new(1, rd.gradient[2]),
 	})
 
@@ -745,6 +734,64 @@ Players.PlayerRemoving:Connect(function(p) removeHeadTag(p) end)
 refreshHeadTags()
 
 -- ═══════════════════════════════════════════════════════════════════════
+-- 🔄 CHAT SYNC
+-- ═══════════════════════════════════════════════════════════════════════
+local SyncChannel = nil
+pcall(function()
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		SyncChannel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+	end
+end)
+
+local function broadcastSync(msg)
+	pcall(function()
+		if SyncChannel then
+			SyncChannel:SendAsync(msg)
+		else
+			game:GetService("Chat"):Chat(LocalPlayer.Character, msg)
+		end
+	end)
+end
+
+local function handleSyncMessage(msg)
+	if not msg or type(msg) ~= "string" then return end
+	if msg:sub(1, 10) == "AMT_RANK::" then
+		local target, rank = msg:match("^AMT_RANK::([^:]+)::(.+)$")
+		if target and rank and RANK_DATA[rank] then
+			RANKS[target] = rank
+			saveRanks()
+			local t = Players:FindFirstChild(target)
+			if t then
+				removeHeadTag(t)
+				task.wait(0.1)
+				createHeadTag(t)
+			end
+		end
+	end
+	if msg:sub(1, 10) == "AMT_KICK::" then
+		local target, reason = msg:match("^AMT_KICK::([^:]+)::(.+)$")
+		if target and target == LocalPlayer.Name then
+			KICKED_USERS[target] = {reason = reason or "من الإدارة", by = "Sync"}
+			saveKicked()
+			pcall(function() LocalPlayer:Kick("🚫 تم طردك\nالسبب: " .. (reason or "من الإدارة")) end)
+		end
+	end
+	if msg:sub(1, 12) == "AMT_UNKICK::" then
+		local target = msg:match("^AMT_UNKICK::(.+)$")
+		if target then
+			KICKED_USERS[target] = nil
+			saveKicked()
+		end
+	end
+end
+
+local function hookPlayerChat(p)
+	p.Chatted:Connect(function(msg) task.spawn(handleSyncMessage, msg) end)
+end
+for _, p in ipairs(Players:GetPlayers()) do hookPlayerChat(p) end
+Players.PlayerAdded:Connect(hookPlayerChat)
+
+-- ═══════════════════════════════════════════════════════════════════════
 -- 🎭 ROLE DETECTION
 -- ═══════════════════════════════════════════════════════════════════════
 local function applyRoleFromData(name, info)
@@ -766,19 +813,6 @@ local function detectRoleFromTools(player)
 	return nil
 end
 
-local function detectRoleFromAppearance(player)
-	local char = player.Character
-	if not char then return nil end
-	for _, obj in ipairs(char:GetChildren()) do
-		if obj:IsA("Tool") then
-			local n = obj.Name:lower()
-			if n:find("knife") then return "Murderer" end
-			if n:find("gun") then return "Sheriff" end
-		end
-	end
-	return nil
-end
-
 task.spawn(function()
 	while true do
 		task.wait(0.5)
@@ -787,7 +821,7 @@ task.spawn(function()
 				if p ~= LocalPlayer then
 					local existing = RoleData[p.Name]
 					if not existing or not existing.Role or existing.Role == "Unknown" then
-						local role = detectRoleFromTools(p) or detectRoleFromAppearance(p)
+						local role = detectRoleFromTools(p)
 						if role then
 							RoleData[p.Name] = {Role = role}
 						elseif _G.AMT.RoundActive then
@@ -802,11 +836,8 @@ task.spawn(function()
 					local myTool = myChar:FindFirstChildOfClass("Tool")
 					if myTool then
 						local n = myTool.Name:lower()
-						if n:find("knife") or n:find("sword") then
-							_G.AMT.MyRole = "Murderer"
-						elseif n:find("gun") or n:find("revolver") then
-							_G.AMT.MyRole = "Sheriff"
-						end
+						if n:find("knife") or n:find("sword") then _G.AMT.MyRole = "Murderer"
+						elseif n:find("gun") or n:find("revolver") then _G.AMT.MyRole = "Sheriff" end
 					end
 				end
 			end
@@ -821,7 +852,7 @@ local ESPGui = Instance.new("ScreenGui")
 ESPGui.Name = "AMT_ESP"
 ESPGui.ResetOnSpawn = false
 ESPGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ESPGui.Parent = (gethui and gethui()) or CoreGui
+safeParent(ESPGui)
 
 local function getRole(p)
 	if RoleData[p.Name] and RoleData[p.Name].Role then return RoleData[p.Name].Role end
@@ -829,10 +860,10 @@ local function getRole(p)
 end
 
 local function getRoleColor(role)
-	if role == "Murderer" then return C.Red
-	elseif role == "Sheriff" then return C.LightBlue
-	elseif role == "Innocent" then return C.Green
-	else return Color3.fromRGB(200, 200, 200) end
+	if role == "Murderer" then return Color3.fromRGB(255, 60, 60)
+	elseif role == "Sheriff" then return Color3.fromRGB(0, 200, 255)
+	elseif role == "Innocent" then return Color3.fromRGB(80, 220, 120)
+	else return Color3.fromRGB(180, 180, 180) end
 end
 
 local function createESP(player)
@@ -938,14 +969,10 @@ local function updateESP()
 				end
 
 				local info = {}
-				if _G.AMT.ESPHealth and hum then
-					table.insert(info, "❤️ " .. math.floor(hum.Health))
-				end
+				if _G.AMT.ESPHealth and hum then table.insert(info, "❤️ " .. math.floor(hum.Health)) end
 				if _G.AMT.ESPDistance and hrp then
 					local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-					if myHrp then
-						table.insert(info, "📏 " .. math.floor((hrp.Position - myHrp.Position).Magnitude))
-					end
+					if myHrp then table.insert(info, "📏 " .. math.floor((hrp.Position - myHrp.Position).Magnitude)) end
 				end
 				if _G.AMT.ESPWeapons then
 					local tool = char:FindFirstChildOfClass("Tool")
@@ -957,10 +984,7 @@ local function updateESP()
 				obj.billboard.Enabled = false
 			end
 		else
-			if obj.highlight then
-				obj.highlight.Adornee = nil
-				obj.highlight.Enabled = false
-			end
+			if obj.highlight then obj.highlight.Adornee = nil; obj.highlight.Enabled = false end
 			if obj.billboard then obj.billboard.Enabled = false end
 		end
 	end
@@ -973,30 +997,25 @@ task.spawn(function()
 	end
 end)
 
--- 💰 ESP Coins
 local CoinESPObjects = {}
 local function isCoin(obj)
 	if not obj or not obj:IsA("BasePart") then return false end
 	local n = obj.Name
-	return n == "Coin_Server" or n == "Coin" or n == "Coin_Client"
-		or n:lower():find("coin") ~= nil
+	return n == "Coin_Server" or n == "Coin" or n == "Coin_Client" or n:lower():find("coin") ~= nil
 end
 
 local function updateCoinESP()
 	if not _G.AMT.ESPCoins then
-		for _, o in pairs(CoinESPObjects) do
-			pcall(function() o:Destroy() end)
-		end
+		for _, o in pairs(CoinESPObjects) do pcall(function() o:Destroy() end) end
 		CoinESPObjects = {}
 		return
 	end
-
 	for _, v in pairs(Workspace:GetDescendants()) do
 		if isCoin(v) and not CoinESPObjects[v] then
 			local hl = Instance.new("Highlight")
-			hl.FillColor = C.Yellow
+			hl.FillColor = Color3.fromRGB(255, 220, 60)
 			hl.FillTransparency = 0.3
-			hl.OutlineColor = C.Yellow
+			hl.OutlineColor = Color3.fromRGB(255, 220, 60)
 			hl.OutlineTransparency = 0
 			hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 			hl.Adornee = v
@@ -1014,7 +1033,7 @@ local function updateCoinESP()
 			lbl.Size = UDim2.new(1, 0, 1, 0)
 			lbl.BackgroundTransparency = 1
 			lbl.Text = "💰"
-			lbl.TextColor3 = C.Yellow
+			lbl.TextColor3 = Color3.fromRGB(255, 220, 60)
 			lbl.TextStrokeTransparency = 0
 			lbl.TextSize = 14
 			lbl.Font = Enum.Font.GothamBold
@@ -1024,7 +1043,6 @@ local function updateCoinESP()
 			CoinESPObjects["bb_" .. tostring(v)] = bb
 		end
 	end
-
 	for k, obj in pairs(CoinESPObjects) do
 		if typeof(k) == "Instance" then
 			if not k or not k.Parent then
@@ -1045,33 +1063,35 @@ end)
 -- ═══════════════════════════════════════════════════════════════════════
 -- ⚔️ COMBAT HELPERS
 -- ═══════════════════════════════════════════════════════════════════════
-local function GetNearestPlayer()
-	local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-	if not myHrp then return nil end
-	local nearest, minDist = nil, math.huge
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer and p.Character then
-			local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-			local hum = p.Character:FindFirstChildOfClass("Humanoid")
-			if hrp and hum and hum.Health > 0 then
-				local d = (hrp.Position - myHrp.Position).Magnitude
-				if d < minDist then minDist = d; nearest = p end
+local function GetMurdererPlayer()
+	for name, info in pairs(RoleData) do
+		if info.Role == "Murderer" then
+			local p = Players:FindFirstChild(name)
+			if p and p.Character and p ~= LocalPlayer then
+				local hum = p.Character:FindFirstChildOfClass("Humanoid")
+				if hum and hum.Health > 0 then return p end
 			end
 		end
 	end
-	return nearest
+	return nil
 end
 
 task.spawn(function()
 	while true do
-		task.wait(0.05)
-		if _G.AMT.Aimbot then
-			local t = GetNearestPlayer()
-			if t and t.Character then
-				local hrp = t.Character:FindFirstChild("HumanoidRootPart")
+		task.wait(0.02)
+		if _G.AMT.AimbotMurderer then
+			local m = GetMurdererPlayer()
+			if m and m.Character then
+				local hrp = m.Character:FindFirstChild("HumanoidRootPart")
 				if hrp then
 					local cam = workspace.CurrentCamera
-					cam.CFrame = CFrame.new(cam.CFrame.Position, hrp.Position)
+					local target = CFrame.new(cam.CFrame.Position, hrp.Position)
+					local smooth = _G.AMT.AimbotSmooth or 0.25
+					cam.CFrame = cam.CFrame:Lerp(target, 1 - smooth)
+					pcall(function()
+						VirtualUser:CaptureController()
+						VirtualUser:ClickButton1(Vector2.new(500, 500))
+					end)
 				end
 			end
 		end
@@ -1084,12 +1104,53 @@ task.spawn(function()
 		if _G.AMT.KillAura then
 			local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 			if myHrp then
+				local range = _G.AMT.KillAuraRange or 15
 				for _, p in ipairs(Players:GetPlayers()) do
 					if p ~= LocalPlayer and p.Character then
 						local hrp = p.Character:FindFirstChild("HumanoidRootPart")
 						local hum = p.Character:FindFirstChildOfClass("Humanoid")
-						if hrp and hum and hum.Health > 0 and (hrp.Position - myHrp.Position).Magnitude <= 10 then
+						if hrp and hum and hum.Health > 0 and (hrp.Position - myHrp.Position).Magnitude <= range then
 							pcall(function() if killEvent then killEvent:FireServer(p.Name) end end)
+						end
+					end
+				end
+			end
+		end
+	end
+end)
+
+local function findGunDrop()
+	for _, obj in pairs(Workspace:GetDescendants()) do
+		if obj:IsA("BasePart") and (obj.Name == "GunDrop" or obj.Name == "Gun") then return obj end
+	end
+	return nil
+end
+
+task.spawn(function()
+	while true do
+		task.wait(0.1)
+		if _G.AMT.AutoGrabGun then
+			local char = LocalPlayer.Character
+			if char then
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if hum and hum.Health > 0 then
+					local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+					local hasGun = (char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun")))
+					if not hasGun then
+						local gun = findGunDrop()
+						if gun then
+							local hrp = char:FindFirstChild("HumanoidRootPart")
+							if hrp then
+								local op = hrp.CFrame
+								hrp.CFrame = gun.CFrame
+								task.wait(0.05)
+								pcall(function()
+									firetouchinterest(hrp, gun, 0)
+									firetouchinterest(hrp, gun, 1)
+								end)
+								task.wait(0.05)
+								hrp.CFrame = op
+							end
 						end
 					end
 				end
@@ -1133,62 +1194,15 @@ end
 
 local function setFullBright(state)
 	if state then
-		Lighting.Brightness = 3; Lighting.ClockTime = 14
-		Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-		Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+		Lighting.Brightness = 3
+		Lighting.ClockTime = 14
+		Lighting.Ambient = Color3.fromRGB(180, 130, 80)
+		Lighting.OutdoorAmbient = Color3.fromRGB(200, 150, 90)
 		Lighting.FogEnd = 100000
 	else
 		Lighting.Brightness = 2
-		Lighting.Ambient = Color3.fromRGB(70, 70, 70)
-		Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-	end
-end
-
-local function setHitboxSize(size)
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer and p.Character then
-			for _, part in ipairs(p.Character:GetDescendants()) do
-				if part:IsA("BasePart") then
-					pcall(function() part.Size = Vector3.new(size, size, size) end)
-					pcall(function() part.Transparency = 0.7 end)
-					pcall(function() part.CanCollide = false end)
-				end
-			end
-		end
-	end
-end
-
-local function setInvisible(state)
-	local char = LocalPlayer.Character
-	if not char then return end
-	for _, part in ipairs(char:GetDescendants()) do
-		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-			part.LocalTransparencyModifier = state and 1 or 0
-			part.Transparency = state and 1 or 0
-		end
-		if part:IsA("Decal") then part.Transparency = state and 1 or 0 end
-	end
-end
-
-local function fastRespawn()
-	local char = LocalPlayer.Character
-	if char then
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum then hum.Health = 0 end
-	end
-	task.wait(0.1)
-	LocalPlayer:LoadCharacter()
-end
-
-local function setXRay(state)
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer and p.Character then
-			for _, part in ipairs(p.Character:GetDescendants()) do
-				if part:IsA("BasePart") then
-					pcall(function() part.LocalTransparencyModifier = state and 0.5 or 0 end)
-				end
-			end
-		end
+		Lighting.Ambient = Color3.fromRGB(70, 50, 30)
+		Lighting.OutdoorAmbient = Color3.fromRGB(128, 90, 50)
 	end
 end
 
@@ -1212,27 +1226,14 @@ setupAntiFling()
 
 local function rejoin() pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end) end
 
-local function findMurderer()
-	for name, info in pairs(RoleData) do
-		if info.Role == "Murderer" then return Players:FindFirstChild(name) end
-	end
-	return nil
-end
-
-local function findGunDrop()
-	for _, obj in pairs(Workspace:GetDescendants()) do
-		if obj:IsA("BasePart") and (obj.Name == "GunDrop" or obj.Name == "Gun") then return obj end
-	end
-	return nil
-end
-
 -- ═══════════════════════════════════════════════════════════════════════
 -- 🤖 AI ENGINE
 -- ═══════════════════════════════════════════════════════════════════════
-local SYSTEM_PROMPT = "أنت botayf، مساعد ذكي عربي. رد بالعربية دايماً. كن مختصر (1-3 جمل). اجب مباشرة."
+local SYSTEM_PROMPT = "أنت botayf، مساعد ذكي عربي. رد بالعربية دايماً. كن مختصر (1-3 جمل)."
 
 local aiHistory = {}
 local BLOCKED = {"user not found", "not found", "error", "failed", "invalid", "404", "500", "unauthorized", "rate limit"}
+
 local function hasBlocked(t)
 	if not t then return false end
 	local l = string.lower(tostring(t))
@@ -1248,11 +1249,8 @@ local function parseOpenAI(raw)
 	if okJ and data then
 		if data.choices and data.choices[1] and data.choices[1].message then
 			return data.choices[1].message.content
-		elseif data.content then
-			return data.content
-		elseif data.response then
-			return data.response
-		end
+		elseif data.content then return data.content
+		elseif data.response then return data.response end
 	end
 	return nil
 end
@@ -1297,8 +1295,7 @@ local function tryPollinationsPOST(messages)
 end
 
 local function tryPollinationsGET(text)
-	local url = "https://text.pollinations.ai/" .. HttpService:UrlEncode(text)
-		.. "?model=openai&seed=" .. math.random(1, 999999)
+	local url = "https://text.pollinations.ai/" .. HttpService:UrlEncode(text) .. "?model=openai&seed=" .. math.random(1, 999999)
 	local ok, res = pcall(httpRequest, {Url = url, Method = "GET", Headers = {["Accept"] = "text/plain"}})
 	if not ok or not res or not res.Body then return nil end
 	if #res.Body < 3 then return nil end
@@ -1371,28 +1368,434 @@ local function askAI(text, callback)
 		if finish(tryKilo(messages)) then return end
 		task.wait(0.2)
 		if finish(tryUncloseai(messages)) then return end
-		safe(false, "⚠️ كل المزودين مشغولين، جرب بعد لحظات")
+		safe(false, "⚠️ كل المزودين مشغولين")
 	end)
 end
 
-local function sendSupport(text, callback)
-	if not httpRequest then if callback then callback(false) end return end
-	task.spawn(function()
-		local ok, res = pcall(httpRequest, {
-			Url = KF_MSG_URL, Method = "POST",
-			Headers = {["Content-Type"] = "application/json", ["Authorization"] = "Bearer " .. KF_API_KEY},
-			Body = HttpService:JSONEncode({
-				project_id = KF_PROJECT_ID,
-				player_user_id = tostring(LocalPlayer.UserId),
-				player_name = LocalPlayer.Name,
-				message = text,
-			}),
-		})
-		if not ok or not res then if callback then callback(false) end return end
-		if res.StatusCode and res.StatusCode >= 400 then if callback then callback(false) end return end
-		if callback then callback(true) end
+-- ═══════════════════════════════════════════════════════════════════════
+-- 💬 AI CHAT WINDOW (منفصل)
+-- ═══════════════════════════════════════════════════════════════════════
+local AIGui = Instance.new("ScreenGui")
+AIGui.Name = "AMT_AIChat"
+AIGui.ResetOnSpawn = false
+AIGui.DisplayOrder = 999
+safeParent(AIGui)
+
+local AIFrame = Instance.new("Frame")
+AIFrame.Size = UDim2.new(0, 420, 0, 500)
+AIFrame.Position = UDim2.new(0.5, -210, 0.5, -250)
+AIFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 5)
+AIFrame.BorderSizePixel = 0
+AIFrame.Visible = false
+AIFrame.Active = true
+AIFrame.Draggable = true
+AIFrame.Parent = AIGui
+Instance.new("UICorner", AIFrame).CornerRadius = UDim.new(0, 14)
+
+local AIStroke = Instance.new("UIStroke", AIFrame)
+AIStroke.Color = Color3.fromRGB(255, 140, 0)
+AIStroke.Thickness = 2
+
+local AIHeader = Instance.new("Frame")
+AIHeader.Size = UDim2.new(1, 0, 0, 50)
+AIHeader.BackgroundColor3 = Color3.fromRGB(30, 15, 5)
+AIHeader.BorderSizePixel = 0
+AIHeader.Parent = AIFrame
+Instance.new("UICorner", AIHeader).CornerRadius = UDim.new(0, 14)
+
+local AITitle = Instance.new("TextLabel")
+AITitle.Size = UDim2.new(1, -60, 1, 0)
+AITitle.Position = UDim2.new(0, 50, 0, 0)
+AITitle.BackgroundTransparency = 1
+AITitle.Text = "🤖 botayf AI"
+AITitle.TextColor3 = Color3.fromRGB(255, 140, 0)
+AITitle.TextSize = 18
+AITitle.Font = Enum.Font.GothamBold
+AITitle.TextXAlignment = Enum.TextXAlignment.Left
+AITitle.Parent = AIHeader
+
+local AIIcon = Instance.new("TextLabel")
+AIIcon.Size = UDim2.new(0, 50, 1, 0)
+AIIcon.BackgroundTransparency = 1
+AIIcon.Text = "🤖"
+AIIcon.TextSize = 24
+AIIcon.Parent = AIHeader
+
+local AICloseBtn = Instance.new("TextButton")
+AICloseBtn.Size = UDim2.new(0, 40, 0, 40)
+AICloseBtn.Position = UDim2.new(1, -45, 0, 5)
+AICloseBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+AICloseBtn.BorderSizePixel = 0
+AICloseBtn.Text = "✕"
+AICloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AICloseBtn.TextSize = 18
+AICloseBtn.Font = Enum.Font.GothamBold
+AICloseBtn.Parent = AIHeader
+Instance.new("UICorner", AICloseBtn).CornerRadius = UDim.new(0, 8)
+AICloseBtn.MouseButton1Click:Connect(function() AIFrame.Visible = false end)
+
+local AIScroll = Instance.new("ScrollingFrame")
+AIScroll.Size = UDim2.new(1, -20, 1, -120)
+AIScroll.Position = UDim2.new(0, 10, 0, 55)
+AIScroll.BackgroundTransparency = 1
+AIScroll.BorderSizePixel = 0
+AIScroll.ScrollBarThickness = 6
+AIScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 140, 0)
+AIScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+AIScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+AIScroll.Parent = AIFrame
+
+local AIList = Instance.new("UIListLayout")
+AIList.SortOrder = Enum.SortOrder.LayoutOrder
+AIList.Padding = UDim.new(0, 8)
+AIList.Parent = AIScroll
+
+local AIPadding = Instance.new("UIPadding", AIScroll)
+AIPadding.PaddingTop = UDim.new(0, 5)
+AIPadding.PaddingLeft = UDim.new(0, 5)
+AIPadding.PaddingRight = UDim.new(0, 5)
+
+local AIInputBox = Instance.new("Frame")
+AIInputBox.Size = UDim2.new(1, -20, 0, 50)
+AIInputBox.Position = UDim2.new(0, 10, 1, -60)
+AIInputBox.BackgroundColor3 = Color3.fromRGB(30, 15, 5)
+AIInputBox.BorderSizePixel = 0
+AIInputBox.Parent = AIFrame
+Instance.new("UICorner", AIInputBox).CornerRadius = UDim.new(0, 10)
+
+local AIInput = Instance.new("TextBox")
+AIInput.Size = UDim2.new(1, -70, 1, -10)
+AIInput.Position = UDim2.new(0, 5, 0, 5)
+AIInput.BackgroundColor3 = Color3.fromRGB(40, 20, 8)
+AIInput.BorderSizePixel = 0
+AIInput.Text = ""
+AIInput.PlaceholderText = "اسأل botayf..."
+AIInput.PlaceholderColor3 = Color3.fromRGB(180, 120, 60)
+AIInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+AIInput.TextSize = 14
+AIInput.Font = Enum.Font.Gotham
+AIInput.TextXAlignment = Enum.TextXAlignment.Left
+AIInput.ClearTextOnFocus = false
+AIInput.Parent = AIInputBox
+Instance.new("UICorner", AIInput).CornerRadius = UDim.new(0, 8)
+
+local AISendBtn = Instance.new("TextButton")
+AISendBtn.Size = UDim2.new(0, 50, 1, -10)
+AISendBtn.Position = UDim2.new(1, -55, 0, 5)
+AISendBtn.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+AISendBtn.BorderSizePixel = 0
+AISendBtn.Text = "📤"
+AISendBtn.TextSize = 20
+AISendBtn.Font = Enum.Font.GothamBold
+AISendBtn.Parent = AIInputBox
+Instance.new("UICorner", AISendBtn).CornerRadius = UDim.new(0, 8)
+
+local function addAIMessage(text, isUser)
+	local msgFrame = Instance.new("Frame")
+	msgFrame.Size = UDim2.new(1, 0, 0, 0)
+	msgFrame.AutomaticSize = Enum.AutomaticSize.Y
+	msgFrame.BackgroundTransparency = 1
+	msgFrame.Parent = AIScroll
+
+	local bubble = Instance.new("Frame")
+	bubble.Size = UDim2.new(0.75, 0, 0, 0)
+	bubble.Position = isUser and UDim2.new(0.25, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
+	bubble.BackgroundColor3 = isUser and Color3.fromRGB(180, 80, 0) or Color3.fromRGB(50, 25, 10)
+	bubble.AutomaticSize = Enum.AutomaticSize.Y
+	bubble.BorderSizePixel = 0
+	bubble.Parent = msgFrame
+	Instance.new("UICorner", bubble).CornerRadius = UDim.new(0, 10)
+
+	local p = Instance.new("UIPadding", bubble)
+	p.PaddingTop = UDim.new(0, 8); p.PaddingBottom = UDim.new(0, 8)
+	p.PaddingLeft = UDim.new(0, 10); p.PaddingRight = UDim.new(0, 10)
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, 0, 0, 0)
+	lbl.AutomaticSize = Enum.AutomaticSize.Y
+	lbl.BackgroundTransparency = 1
+	lbl.Text = (isUser and "👤 " or "🤖 ") .. text
+	lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	lbl.TextSize = 14
+	lbl.Font = Enum.Font.Gotham
+	lbl.TextWrapped = true
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.TextYAlignment = Enum.TextYAlignment.Top
+	lbl.Parent = bubble
+
+	task.wait()
+	AIScroll.CanvasPosition = Vector2.new(0, AIScroll.AbsoluteCanvasSize.Y)
+end
+
+local aiThinking = false
+local function sendAIMessage()
+	if aiThinking then return end
+	local text = AIInput.Text
+	if text == "" or text == nil then return end
+	AIInput.Text = ""
+	addAIMessage(text, true)
+	aiThinking = true
+	addAIMessage("⏳ يفكر...", false)
+	askAI(text, function(ok, reply)
+		aiThinking = false
+		local children = AIScroll:GetChildren()
+		local lastMsg = nil
+		for _, c in ipairs(children) do
+			if c:IsA("Frame") then lastMsg = c end
+		end
+		if lastMsg then lastMsg:Destroy() end
+		addAIMessage(reply, false)
 	end)
 end
+
+AISendBtn.MouseButton1Click:Connect(sendAIMessage)
+AIInput.FocusLost:Connect(function(enterPressed)
+	if enterPressed then sendAIMessage() end
+end)
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- 🎫 SUPPORT CHAT WINDOW (polling حقيقي — نفس السكربت الأصلي)
+-- ═══════════════════════════════════════════════════════════════════════
+local SupGui = Instance.new("ScreenGui")
+SupGui.Name = "AMT_SupportChat"
+SupGui.ResetOnSpawn = false
+SupGui.DisplayOrder = 999
+safeParent(SupGui)
+
+local SupFrame = Instance.new("Frame")
+SupFrame.Size = UDim2.new(0, 400, 0, 520)
+SupFrame.Position = UDim2.new(0.5, -200, 0.5, -260)
+SupFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 5)
+SupFrame.BorderSizePixel = 0
+SupFrame.Visible = false
+SupFrame.Active = true
+SupFrame.Draggable = true
+SupFrame.Parent = SupGui
+Instance.new("UICorner", SupFrame).CornerRadius = UDim.new(0, 14)
+
+local SupStroke = Instance.new("UIStroke", SupFrame)
+SupStroke.Color = Color3.fromRGB(255, 140, 0)
+SupStroke.Thickness = 2
+
+local SupHeader = Instance.new("Frame")
+SupHeader.Size = UDim2.new(1, 0, 0, 50)
+SupHeader.BackgroundColor3 = Color3.fromRGB(30, 15, 5)
+SupHeader.BorderSizePixel = 0
+SupHeader.Parent = SupFrame
+Instance.new("UICorner", SupHeader).CornerRadius = UDim.new(0, 14)
+
+local SupTitle = Instance.new("TextLabel")
+SupTitle.Size = UDim2.new(1, -60, 1, 0)
+SupTitle.Position = UDim2.new(0, 50, 0, 0)
+SupTitle.BackgroundTransparency = 1
+SupTitle.Text = "💬 الدعم البشري"
+SupTitle.TextColor3 = Color3.fromRGB(255, 140, 0)
+SupTitle.TextSize = 18
+SupTitle.Font = Enum.Font.GothamBold
+SupTitle.TextXAlignment = Enum.TextXAlignment.Left
+SupTitle.Parent = SupHeader
+
+local SupIcon = Instance.new("TextLabel")
+SupIcon.Size = UDim2.new(0, 50, 1, 0)
+SupIcon.BackgroundTransparency = 1
+SupIcon.Text = "💬"
+SupIcon.TextSize = 24
+SupIcon.Parent = SupHeader
+
+local SupCloseBtn = Instance.new("TextButton")
+SupCloseBtn.Size = UDim2.new(0, 40, 0, 40)
+SupCloseBtn.Position = UDim2.new(1, -45, 0, 5)
+SupCloseBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+SupCloseBtn.BorderSizePixel = 0
+SupCloseBtn.Text = "✕"
+SupCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SupCloseBtn.TextSize = 18
+SupCloseBtn.Font = Enum.Font.GothamBold
+SupCloseBtn.Parent = SupHeader
+Instance.new("UICorner", SupCloseBtn).CornerRadius = UDim.new(0, 8)
+SupCloseBtn.MouseButton1Click:Connect(function() SupFrame.Visible = false end)
+
+local SupScroll = Instance.new("ScrollingFrame")
+SupScroll.Size = UDim2.new(1, -20, 1, -120)
+SupScroll.Position = UDim2.new(0, 10, 0, 55)
+SupScroll.BackgroundColor3 = Color3.fromRGB(24, 14, 6)
+SupScroll.BorderSizePixel = 0
+SupScroll.ScrollBarThickness = 6
+SupScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 140, 0)
+SupScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+SupScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+SupScroll.Parent = SupFrame
+Instance.new("UICorner", SupScroll).CornerRadius = UDim.new(0, 10)
+
+local SupList = Instance.new("UIListLayout")
+SupList.SortOrder = Enum.SortOrder.LayoutOrder
+SupList.Padding = UDim.new(0, 6)
+SupList.Parent = SupScroll
+
+local SupPadding = Instance.new("UIPadding", SupScroll)
+SupPadding.PaddingTop = UDim.new(0, 8)
+SupPadding.PaddingBottom = UDim.new(0, 8)
+SupPadding.PaddingLeft = UDim.new(0, 8)
+SupPadding.PaddingRight = UDim.new(0, 8)
+
+local SupInputBox = Instance.new("Frame")
+SupInputBox.Size = UDim2.new(1, -20, 0, 50)
+SupInputBox.Position = UDim2.new(0, 10, 1, -60)
+SupInputBox.BackgroundColor3 = Color3.fromRGB(30, 15, 5)
+SupInputBox.BorderSizePixel = 0
+SupInputBox.Parent = SupFrame
+Instance.new("UICorner", SupInputBox).CornerRadius = UDim.new(0, 10)
+
+local SupInput = Instance.new("TextBox")
+SupInput.Size = UDim2.new(1, -70, 1, -10)
+SupInput.Position = UDim2.new(0, 5, 0, 5)
+SupInput.BackgroundColor3 = Color3.fromRGB(40, 20, 8)
+SupInput.BorderSizePixel = 0
+SupInput.Text = ""
+SupInput.PlaceholderText = "اكتب رسالتك للدعم..."
+SupInput.PlaceholderColor3 = Color3.fromRGB(180, 120, 60)
+SupInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+SupInput.TextSize = 14
+SupInput.Font = Enum.Font.Gotham
+SupInput.TextXAlignment = Enum.TextXAlignment.Left
+SupInput.ClearTextOnFocus = false
+SupInput.Parent = SupInputBox
+Instance.new("UICorner", SupInput).CornerRadius = UDim.new(0, 8)
+
+local SupSendBtn = Instance.new("TextButton")
+SupSendBtn.Size = UDim2.new(0, 50, 1, -10)
+SupSendBtn.Position = UDim2.new(1, -55, 0, 5)
+SupSendBtn.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+SupSendBtn.BorderSizePixel = 0
+SupSendBtn.Text = "➤"
+SupSendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SupSendBtn.TextSize = 18
+SupSendBtn.Font = Enum.Font.GothamBold
+SupSendBtn.Parent = SupInputBox
+Instance.new("UICorner", SupSendBtn).CornerRadius = UDim.new(0, 8)
+
+local supMsgOrder = 0
+
+local function supScrollDown()
+	task.wait()
+	SupScroll.CanvasPosition = Vector2.new(0, SupScroll.AbsoluteCanvasSize.Y)
+end
+
+local function addSupBubble(sender, text, msgId)
+	if msgId and shownMessages[msgId] then return end
+	if msgId then shownMessages[msgId] = true end
+	supMsgOrder = supMsgOrder + 1
+
+	local isUser = (sender == "player" or sender == "user")
+	local isOwner = (sender == "owner")
+	local isSystem = (sender == "system")
+
+	local container = Instance.new("Frame")
+	container.Size = UDim2.new(1, 0, 0, 0)
+	container.AutomaticSize = Enum.AutomaticSize.Y
+	container.BackgroundTransparency = 1
+	container.LayoutOrder = supMsgOrder
+	container.Parent = SupScroll
+
+	local bubble = Instance.new("TextLabel")
+	if isUser then bubble.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+	elseif isOwner then bubble.BackgroundColor3 = Color3.fromRGB(200, 100, 40)
+	elseif isSystem then bubble.BackgroundColor3 = Color3.fromRGB(80, 40, 20)
+	else bubble.BackgroundColor3 = Color3.fromRGB(45, 25, 10) end
+	bubble.TextColor3 = Color3.fromRGB(255, 255, 255)
+	bubble.TextSize = 13
+	bubble.Font = Enum.Font.Gotham
+	bubble.TextWrapped = true
+	bubble.TextXAlignment = Enum.TextXAlignment.Left
+	bubble.TextYAlignment = Enum.TextYAlignment.Top
+	local prefix = isUser and "👤 أنت: " or (isOwner and "👑 الإدارة: " or (isSystem and "⚙️ نظام: " or "💬 الدعم: "))
+	bubble.Text = prefix .. tostring(text)
+	bubble.Size = UDim2.new(0.88, 0, 0, 0)
+	bubble.AutomaticSize = Enum.AutomaticSize.XY
+	bubble.Position = isUser and UDim2.new(0.12, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
+	local pad = Instance.new("UIPadding", bubble)
+	pad.PaddingTop = UDim.new(0, 6); pad.PaddingBottom = UDim.new(0, 6)
+	pad.PaddingLeft = UDim.new(0, 10); pad.PaddingRight = UDim.new(0, 10)
+	Instance.new("UICorner", bubble).CornerRadius = UDim.new(0, 10)
+	bubble.Parent = container
+	supScrollDown()
+end
+
+local supSending = false
+local function sendSupMessage()
+	if supSending then return end
+	local text = SupInput.Text:gsub("^%s+", ""):gsub("%s+$", "")
+	if text == "" then return end
+	supSending = true
+	SupSendBtn.Text = "⏳"
+	SupInput.Text = ""
+	addSupBubble("player", text, nil)
+
+	sendSupport(text, function(success)
+		supSending = false
+		SupSendBtn.Text = "➤"
+		if success then
+			addSupBubble("system", "✅ تم إرسال رسالتك للدعم", nil)
+		else
+			addSupBubble("system", "⚠️ فشل الإرسال، جرب مرة ثانية", nil)
+		end
+	end)
+end
+
+SupSendBtn.MouseButton1Click:Connect(sendSupMessage)
+SupInput.FocusLost:Connect(function(enterPressed)
+	if enterPressed then sendSupMessage() end
+end)
+
+-- رسالة ترحيب أولية
+addSupBubble("system", "أهلاً " .. LocalPlayer.Name .. " 👋\nاكتب رسالتك وسيتم إرسالها للدعم.", nil)
+
+-- تحميل الرسائل القديمة لما يفتح الشات
+local loadedOld = false
+local function loadOldMessages()
+	if loadedOld then return end
+	loadedOld = true
+	task.spawn(function()
+		if not httpRequest then return end
+		local url = KF_MSG_URL .. "?project_id=" .. KF_PROJECT_ID .. "&player_user_id=" .. LocalPlayer.UserId
+		local ok, res = pcall(httpRequest, { Url = url, Method = "GET", Headers = { ["Authorization"] = "Bearer " .. KF_API_KEY } })
+		if ok and res then
+			local data = decodeMsgResponse(res)
+			if data and data.messages then
+				for _, m in ipairs(data.messages) do
+					local msgId = m.id or m.created_at
+					if m.created_at then lastSeen = m.created_at end
+					if msgId then addSupBubble(m.sender or "support", m.message or "", msgId) end
+				end
+			end
+		end
+	end)
+end
+
+-- Polling للردود الجديدة
+task.spawn(function()
+	while true do
+		task.wait(2)
+		if SupFrame and SupFrame.Visible and httpRequest then
+			local url = KF_MSG_URL .. "?project_id=" .. KF_PROJECT_ID .. "&player_user_id=" .. LocalPlayer.UserId
+			if lastSeen then url = url .. "&since=" .. HttpService:UrlEncode(lastSeen) end
+			local ok, res = pcall(httpRequest, { Url = url, Method = "GET", Headers = { ["Authorization"] = "Bearer " .. KF_API_KEY } })
+			if ok and res then
+				local data = decodeMsgResponse(res)
+				if data and data.messages then
+					for _, m in ipairs(data.messages) do
+						local msgId = m.id or m.created_at
+						if m.created_at then lastSeen = m.created_at end
+						if not msgId or shownMessages[msgId] then continue end
+						if m.sender ~= "player" and m.sender ~= "user" then
+							addSupBubble(m.sender or "support", m.message or "", msgId)
+						end
+					end
+				end
+			end
+		end
+	end
+end)
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- 🌊 WindUI
@@ -1405,23 +1808,23 @@ local function notify(title, text)
 end
 
 local Window = WindUI:CreateWindow({
-	Title = "AMT MEGA HUB v21",
+	Title = "🎃 AMT MEGA v33",
 	Icon = "crown",
-	Author = "by AMT Team 🌊",
+	Author = "by AMT Team 🎃",
 	Folder = "AMTMegaHub",
 	Size = UDim2.fromOffset(620, 540),
 	Theme = "Dark",
 	Transparent = true,
 	Resizable = true,
 	OpenButton = {
-		Title = "افتح القائمة",
+		Title = "🎃 افتح القائمة",
 		Icon = "mouse-pointer-click",
 		CornerRadius = UDim.new(0, 16),
-		Color = ColorSequence.new(C.BeachSand, C.OceanBlue),
+		Color = ColorSequence.new(Color3.fromRGB(255, 140, 0), Color3.fromRGB(20, 20, 20)),
 		OnlyMobile = false,
 	},
 	KeySystem = {
-		Title = "🔑 AMT MEGA - تفعيل",
+		Title = "🎃 AMT MEGA - تفعيل",
 		Note = "أدخل مفتاح التفعيل للمتابعة",
 		SaveKey = true,
 		URL = KF_GET_KEY_URL,
@@ -1438,99 +1841,58 @@ local Window = WindUI:CreateWindow({
 	},
 })
 
--- ═══════════════════════════════════════════════════════════════════════
--- 🌾 TAB 1: Auto Farm
--- ═══════════════════════════════════════════════════════════════════════
+-- 🌾 TAB: Auto Farm
 local FarmTab = Window:Tab({ Title = "🌾 Auto Farm", Icon = "wheat" })
-FarmTab:Section({ Title = "🪙 فارم العملات" })
-
-FarmTab:Toggle({
-	Title = "🟢 تشغيل الفارم",
-	Default = false,
-	Callback = function(state)
-		_G.AMT.AutoEnabled = state
-		if state then
-			_G.AMT.AutoEngageKilling = false
-			_G.AMT.AutoEngageKilled = false
-			SafeBlock.Position = Vector3.new(0, 99999, 0)
-			task.spawn(farmLoop)
-			notify("✅", "الفارم شغال")
-		else
-			if CurrentTween then CurrentTween:Cancel(); CurrentTween = nil end
-			Platform.CFrame = CFrame.new(0, 99999, 0)
-			unfreezeAll()
-			notify("🔴", "توقف")
-		end
+FarmTab:Section({ Title = "🎃 فارم العملات" })
+FarmTab:Toggle({Title = "🎃 تشغيل الفارم", Default = false, Callback = function(state)
+	_G.AMT.AutoEnabled = state
+	if state then
+		_G.AMT.AutoEngageKilling = false
+		_G.AMT.AutoEngageKilled = false
+		SafeBlock.Position = Vector3.new(0, 99999, 0)
+		task.spawn(farmLoop)
+		notify("🎃", "الفارم شغال")
+	else
+		if CurrentTween then CurrentTween:Cancel(); CurrentTween = nil end
+		Platform.CFrame = CFrame.new(0, 99999, 0)
+		unfreezeAll()
+		notify("🖤", "توقف")
 	end
-})
-
-FarmTab:Slider({
-	Title = "⚡ السرعة",
-	Step = 1,
-	Value = {Min = 5, Max = 100, Default = 35},
-	Callback = function(v) _G.AMT.SpeedValue = v end
-})
-
+end})
+FarmTab:Slider({Title = "⚡ السرعة", Step = 1, Value = {Min = 5, Max = 100, Default = 35}, Callback = function(v) _G.AMT.SpeedValue = v end})
 FarmTab:Divider()
-FarmTab:Section({ Title = "🎯 Auto Engage (تلقائي)" })
-FarmTab:Toggle({
-	Title = "🤖 ذبح تلقائي + بلوكة أمان",
-	Default = true,
-	Callback = function(s)
-		_G.AMT.AutoEngageEnabled = s
-		if not s then
-			_G.AMT.AutoEngageKilling = false
-			SafeBlock.Position = Vector3.new(0, 99999, 0)
-		end
-		notify(s and "✅" or "🔴", "Auto Engage " .. (s and "شغال" or "موقف"))
-	end
-})
-FarmTab:Paragraph({
-	Title = "💡 كيف يعمل؟",
-	Desc = "• بدون أي زر — يشتغل تلقائي\n• الشرط: أنت القاتل + جمعت كل الفلوس\n• 🧱 يحط بلوكة أمان تحتك\n• 🔪 يضل يذبح لين تنتهي الراوند\n• 🛡️ ما تطيح في الفراغ"
-})
-
+FarmTab:Section({ Title = "🎯 Auto Engage" })
+FarmTab:Toggle({Title = "🎃 ذبح تلقائي + بلوكة أمان", Default = true, Callback = function(s)
+	_G.AMT.AutoEngageEnabled = s
+	if not s then _G.AMT.AutoEngageKilling = false; SafeBlock.Position = Vector3.new(0, 99999, 0) end
+	notify(s and "🎃" or "🖤", "Auto Engage " .. (s and "شغال" or "موقف"))
+end})
+FarmTab:Paragraph({Title = "💡", Desc = "قاتل + كل الفلوس = بلوكة برتقالية + ذبح"})
 FarmTab:Divider()
 local FarmStatus = FarmTab:Paragraph({Title = "📊 حالة", Desc = "..."})
 task.spawn(function()
 	while true do
 		task.wait(1)
 		pcall(function()
-			local mode = "🔴 متوقف"
-			if _G.AMT.AutoEngageKilling then
-				mode = "🔪 يذبح + بلوكة!"
-			elseif _G.AMT.AutoEnabled then
-				mode = "🟢 شغال"
-			end
-			FarmStatus:SetDesc("🌾 الفارم: " .. mode ..
-				"\n💎 " .. _G.AMT.CollectedCoins .. "/" .. _G.AMT.TargetCoins ..
-				"\n🎮 " .. (_G.AMT.RoundActive and "🟢 نشطة" or "🔴 لوبي") ..
-				"\n🎭 " .. _G.AMT.MyRole ..
-				"\n🎯 Auto Engage: " .. (_G.AMT.AutoEngageEnabled and "🟢" or "🔴") ..
-				(_G.AMT.AutoEngageKilling and " (ذبح ✓)" or ""))
+			local mode = "🖤 متوقف"
+			if _G.AMT.AutoEngageKilling then mode = "🔥 يذبح!"
+			elseif _G.AMT.AutoEnabled then mode = "🎃 شغال" end
+			FarmStatus:SetDesc("🎃 " .. mode .. "\n💎 " .. _G.AMT.CollectedCoins .. "/" .. _G.AMT.TargetCoins .. "\n🎭 " .. _G.AMT.MyRole)
 		end)
 	end
 end)
+FarmTab:Button({Title = "🔥 Instant Kill All", Icon = "zap", Callback = function()
+	if _G.AMT.MyRole ~= "Murderer" then notify("⚠️", "لازم القاتل") return end
+	pcall(pullAllPlayers); task.wait(0.3)
+	pcall(equipKnife); task.wait(0.2)
+	pcall(attackAll); task.wait(0.2)
+	pcall(killWithRemote); task.wait(0.5)
+	pcall(unfreezeAll)
+	notify("💀", "تم!")
+end})
 
-FarmTab:Button({
-	Title = "🔪 Instant Kill All",
-	Icon = "zap",
-	Callback = function()
-		if _G.AMT.MyRole ~= "Murderer" then notify("⚠️", "لازم القاتل") return end
-		pcall(pullAllPlayers); task.wait(0.3)
-		pcall(equipKnife); task.wait(0.2)
-		pcall(attackAll); task.wait(0.2)
-		pcall(killWithRemote); task.wait(0.5)
-		pcall(unfreezeAll)
-		notify("💀", "تم!")
-	end
-})
-
--- ═══════════════════════════════════════════════════════════════════════
--- 📊 TAB 2: Dashboard
--- ═══════════════════════════════════════════════════════════════════════
+-- 📊 TAB: Dashboard
 local DashTab = Window:Tab({ Title = "Dashboard", Icon = "layout-dashboard" })
-
 DashTab:Section({ Title = "👤 معلوماتك" })
 local UserInfo = DashTab:Paragraph({Title = "👤", Desc = "..."})
 task.spawn(function()
@@ -1540,46 +1902,15 @@ task.spawn(function()
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		local hrp = char and char:FindFirstChild("HumanoidRootPart")
 		local rd = RANK_DATA[MY_RANK] or RANK_DATA.Member
-		local rankText = rd.emoji .. " " .. MY_RANK .. " (Power: " .. MY_POWER .. ")"
 		local posText = hrp and (math.floor(hrp.Position.X) .. "," .. math.floor(hrp.Position.Y) .. "," .. math.floor(hrp.Position.Z)) or "?"
 		local hpText = hum and (math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)) or "?"
-		local stateText = hum and tostring(hum:GetState()):gsub("Enum.HumanoidStateType.", "") or "?"
 		pcall(function()
-			UserInfo:SetDesc(
-				"👤 " .. LocalPlayer.DisplayName .. " (@" .. LocalPlayer.Name .. ")" ..
-				"\n🆔 ID: " .. LocalPlayer.UserId ..
-				"\n💎 الرتبة: " .. rankText ..
-				"\n🎭 الدور: " .. _G.AMT.MyRole ..
-				"\n❤️ الصحة: " .. hpText ..
-				"\n🏃 الحالة: " .. stateText ..
-				"\n📍 الموقع: " .. posText
-			)
+			UserInfo:SetDesc("👤 " .. LocalPlayer.DisplayName .. "\n🎃 " .. rd.emoji .. " " .. MY_RANK .. "\n🎭 " .. _G.AMT.MyRole .. "\n❤️ " .. hpText .. "\n📍 " .. posText)
 		end)
 	end
 end)
 
-DashTab:Divider()
-DashTab:Section({ Title = "🌐 السيرفر" })
-local ServerInfo = DashTab:Paragraph({Title = "🌐", Desc = "..."})
-task.spawn(function()
-	while true do
-		task.wait(3)
-		local ping = math.floor(LocalPlayer:GetNetworkPing() * 1000)
-		pcall(function()
-			ServerInfo:SetDesc(
-				"🌐 Job ID: " .. string.sub(game.JobId, 1, 12) ..
-				"\n🎮 Place ID: " .. game.PlaceId ..
-				"\n👥 اللاعبين: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers ..
-				"\n⚡ Ping: " .. ping .. "ms" ..
-				"\n🕐 الوقت: " .. os.date("%H:%M:%S")
-			)
-		end)
-	end
-end)
-
--- ═══════════════════════════════════════════════════════════════════════
--- 👁️ TAB 3: ESP
--- ═══════════════════════════════════════════════════════════════════════
+-- 👁️ TAB: ESP
 local ESPTab = Window:Tab({ Title = "ESP", Icon = "eye" })
 ESPTab:Section({ Title = "👁️ ESP اللاعبين" })
 ESPTab:Toggle({Title = "👁️ ESP اللاعبين", Default = false, Callback = function(state)
@@ -1595,119 +1926,50 @@ ESPTab:Toggle({Title = "📝 ESP الأسماء", Default = false, Callback = fu
 ESPTab:Toggle({Title = "❤️ ESP الصحة", Default = false, Callback = function(s) _G.AMT.ESPHealth = s end})
 ESPTab:Toggle({Title = "📏 ESP المسافة", Default = false, Callback = function(s) _G.AMT.ESPDistance = s end})
 ESPTab:Toggle({Title = "🔧 ESP الأسلحة", Default = false, Callback = function(s) _G.AMT.ESPWeapons = s end})
-
 ESPTab:Divider()
 ESPTab:Section({ Title = "🏷️ Head Tags" })
-ESPTab:Toggle({Title = "⭐ إظهار Head Tags", Default = true, Callback = function(state)
-	_G.AMT.ESPVIPTags = state
-end})
-
-ESPTab:Button({Title = "🔄 إعادة تحميل Tags", Icon = "refresh-cw", Callback = function()
+ESPTab:Toggle({Title = "⭐ Head Tags", Default = true, Callback = function(state) _G.AMT.ESPVIPTags = state end})
+ESPTab:Button({Title = "🔄 إعادة تحميل", Icon = "refresh-cw", Callback = function()
 	for p, _ in pairs(HeadTags) do removeHeadTag(p) end
 	refreshHeadTags()
-	notify("⭐", "تم التحديث")
+	notify("⭐", "تم")
 end})
-
 ESPTab:Divider()
-ESPTab:Section({ Title = "💰 ESP العملات" })
 ESPTab:Toggle({Title = "💰 ESP العملات", Default = false, Callback = function(s) _G.AMT.ESPCoins = s end})
 
-Players.PlayerAdded:Connect(function(p)
-	task.wait(1)
-	if _G.AMT.ESPPlayers then createESP(p) end
-	refreshHeadTags()
-end)
-Players.PlayerRemoving:Connect(function(p) removeESP(p); removeHeadTag(p) end)
-
--- ═══════════════════════════════════════════════════════════════════════
--- ⚔️ TAB 4: Combat
--- ═══════════════════════════════════════════════════════════════════════
+-- ⚔️ TAB: Combat
 local CombatTab = Window:Tab({ Title = "Combat", Icon = "sword" })
-CombatTab:Section({ Title = "🎯 تصويب" })
-CombatTab:Toggle({Title = "🎯 Aimbot", Default = false, Callback = function(s) _G.AMT.Aimbot = s end})
+CombatTab:Section({ Title = "🎯 Aimbot على القاتل" })
+CombatTab:Toggle({Title = "🎯 تفعيل Aimbot", Default = false, Callback = function(s) _G.AMT.AimbotMurderer = s end})
+CombatTab:Slider({Title = "🎯 السلاسة", Step = 0.05, Value = {Min = 0.05, Max = 0.9, Default = 0.25}, Callback = function(v) _G.AMT.AimbotSmooth = v end})
+CombatTab:Paragraph({Title = "💡", Desc = "يخليك تصوب على القاتل تلقائياً + يطلق فوراً"})
+CombatTab:Divider()
+CombatTab:Section({ Title = "💀 Kill Aura" })
 CombatTab:Toggle({Title = "💀 Kill Aura", Default = false, Callback = function(s) _G.AMT.KillAura = s end})
-CombatTab:Toggle({Title = "📦 Hitbox كبير", Default = false, Callback = function(s)
-	if s then setHitboxSize(8) else setHitboxSize(2) end
+CombatTab:Slider({Title = "📏 المدى", Step = 1, Value = {Min = 5, Max = 50, Default = 15}, Callback = function(v) _G.AMT.KillAuraRange = v end})
+CombatTab:Divider()
+CombatTab:Section({ Title = "📦 Hitbox" })
+CombatTab:Slider({Title = "📦 الحجم", Step = 0.5, Value = {Min = 2, Max = 15, Default = 2}, Callback = function(v)
+	_G.AMT.HitboxSize = v
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and p.Character then
+			for _, part in ipairs(p.Character:GetDescendants()) do
+				if part:IsA("BasePart") then pcall(function() part.Size = Vector3.new(v, v, v) end) end
+			end
+		end
+	end
 end})
 
--- ═══════════════════════════════════════════════════════════════════════
--- 👮 TAB 5: Sheriff & Murderer
--- ═══════════════════════════════════════════════════════════════════════
-local SMTab = Window:Tab({ Title = "Sheriff & Murderer", Icon = "crosshair" })
+-- 👮 TAB: Sheriff
+local SMTab = Window:Tab({ Title = "Sheriff", Icon = "crosshair" })
 SMTab:Section({ Title = "👮 الشريف" })
-
 SMTab:Toggle({Title = "🔫 Auto Grab Gun", Default = false, Callback = function(state)
 	_G.AMT.AutoGrabGun = state
-	if state then
-		task.spawn(function()
-			while _G.AMT.AutoGrabGun do
-				task.wait(0.1)
-				local char = LocalPlayer.Character
-				if not char then continue end
-				local hum = char:FindFirstChildOfClass("Humanoid")
-				if not hum or hum.Health <= 0 then continue end
-				local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
-				local hasGun = (char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun")))
-				if not hasGun then
-					local gun = findGunDrop()
-					if gun then
-						local hrp = char:FindFirstChild("HumanoidRootPart")
-						if hrp then
-							local op = hrp.CFrame
-							hrp.CFrame = gun.CFrame
-							task.wait(0.05)
-							pcall(function()
-								firetouchinterest(hrp, gun, 0)
-								firetouchinterest(hrp, gun, 1)
-							end)
-							task.wait(0.05)
-							hrp.CFrame = op
-						end
-					end
-				end
-			end
-		end)
-	end
+	notify(state and "🎃" or "🖤", "Auto Grab Gun " .. (state and "شغال" or "موقف"))
 end})
+SMTab:Paragraph({Title = "💡", Desc = "يجيب البندقية تلقائياً لو ظهرت على الأرض"})
 
-SMTab:Toggle({Title = "🎯 Auto Shoot Murderer", Default = false, Callback = function(state)
-	_G.AMT.AutoShootMurderer = state
-	if state then
-		task.spawn(function()
-			while _G.AMT.AutoShootMurderer do
-				task.wait(0.15)
-				local char = LocalPlayer.Character
-				if not char then continue end
-				local hum = char:FindFirstChildOfClass("Humanoid")
-				if not hum or hum.Health <= 0 then continue end
-				local m = findMurderer()
-				if m and m.Character then
-					local mHrp = m.Character:FindFirstChild("HumanoidRootPart")
-					local mHum = m.Character:FindFirstChildOfClass("Humanoid")
-					if mHrp and mHum and mHum.Health > 0 then
-						local cam = workspace.CurrentCamera
-						cam.CFrame = CFrame.new(cam.CFrame.Position, mHrp.Position)
-						pcall(function()
-							VirtualUser:CaptureController()
-							VirtualUser:ClickButton1(Vector2.new(500, 500))
-						end)
-					end
-				end
-			end
-		end)
-	end
-end})
-
-SMTab:Divider()
-SMTab:Section({ Title = "🔪 القاتل - Auto Engage" })
-SMTab:Paragraph({
-	Title = "🎯 Auto Engage + بلوكة أمان",
-	Desc = "مفعّل من تبويب Auto Farm\nقاتل + كل الفلوس = وقف فارم + بلوكة + يذبح مستمر"
-})
-
--- ═══════════════════════════════════════════════════════════════════════
--- 👤 TAB 6: Player
--- ═══════════════════════════════════════════════════════════════════════
+-- 👤 TAB: Player
 local ModsTab = Window:Tab({ Title = "Player", Icon = "person-standing" })
 ModsTab:Section({ Title = "🏃 الحركة" })
 ModsTab:Slider({Title = "🏃 Speed", Step = 1, Value = {Min = 16, Max = 500, Default = 16}, Callback = function(v)
@@ -1719,18 +1981,31 @@ ModsTab:Slider({Title = "🦘 Jump", Step = 1, Value = {Min = 50, Max = 500, Def
 	if c and c:FindFirstChildOfClass("Humanoid") then c:FindFirstChildOfClass("Humanoid").JumpPower = v end
 end})
 ModsTab:Toggle({Title = "✈️ Fly", Default = false, Callback = function(s) toggleFly(s) end})
-ModsTab:Toggle({Title = "💡 Full Bright", Default = false, Callback = function(s) setFullBright(s) end})
-
 ModsTab:Divider()
 ModsTab:Section({ Title = "🎁 ميزات إضافية" })
 ModsTab:Toggle({Title = "🛡️ Anti-Fling", Default = false, Callback = function(s) _G.AMT.AntiFling = s end})
-ModsTab:Toggle({Title = "👻 Invisible", Default = false, Callback = function(s) setInvisible(s) end})
-ModsTab:Toggle({Title = "👁️ X-Ray", Default = false, Callback = function(s) setXRay(s) end})
-ModsTab:Button({Title = "🦅 Respawn فوري", Icon = "zap", Callback = function() fastRespawn() end})
+ModsTab:Toggle({Title = "👁️ X-Ray", Default = false, Callback = function(s)
+	local char = LocalPlayer.Character
+	if char then
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+				part.LocalTransparencyModifier = s and 0.5 or 0
+			end
+		end
+	end
+end})
+ModsTab:Toggle({Title = "💡 Full Bright", Default = false, Callback = function(s) setFullBright(s) end})
+ModsTab:Button({Title = "🦅 Respawn فوري", Icon = "zap", Callback = function()
+	local char = LocalPlayer.Character
+	if char then
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then hum.Health = 0 end
+	end
+	task.wait(0.1)
+	LocalPlayer:LoadCharacter()
+end})
 
--- ═══════════════════════════════════════════════════════════════════════
--- 🌐 TAB 7: Teleport
--- ═══════════════════════════════════════════════════════════════════════
+-- 🌐 TAB: Teleport
 local TPTab = Window:Tab({ Title = "Teleport", Icon = "map-pin" })
 local targetPlayer = ""
 TPTab:Input({Title = "👤 اسم اللاعب", Placeholder = "PlayerName", Callback = function(t) targetPlayer = t end})
@@ -1746,160 +2021,255 @@ end})
 TPTab:Divider()
 TPTab:Button({Title = "🔄 إعادة الدخول", Icon = "refresh-cw", Callback = function() rejoin() end})
 
--- ═══════════════════════════════════════════════════════════════════════
--- 🤖 TAB 8: botayf AI
--- ═══════════════════════════════════════════════════════════════════════
+-- 🤖 TAB: AI
 local AITab = Window:Tab({ Title = "🤖 botayf AI", Icon = "bot" })
-
 if IS_VIP then
-	AITab:Section({ Title = "🤖 مساعد ذكي" })
-	AITab:Paragraph({Title = "💎 VIP+", Desc = "اسأل botayf - يعمل بدون مفتاح"})
-
-	local quickQ = ""
-	AITab:Input({Title = "📝 سؤال", Placeholder = "اكتب سؤالك...", Callback = function(t) quickQ = t end})
-	AITab:Button({Title = "🚀 إرسال", Icon = "send", Callback = function()
-		if quickQ == "" then notify("⚠️", "اكتب سؤال") return end
-		notify("⏳ botayf", "جاري التفكير...")
-		askAI(quickQ, function(ok, reply)
-			notify("🤖 botayf", reply)
-		end)
+	AITab:Section({ Title = "🤖 دردشة ذكية" })
+	AITab:Paragraph({Title = "💬", Desc = "اضغط الزر → تطلع نافذة دردشة"})
+	AITab:Button({Title = "💬 فتح شات botayf", Icon = "message-circle", Callback = function()
+		AIFrame.Visible = true
+		AIInput:CaptureFocus()
 	end})
-	AITab:Divider()
-	AITab:Button({Title = "🧹 مسح الذاكرة", Icon = "trash-2", Callback = function()
+	AITab:Button({Title = "🧹 مسح المحادثة", Icon = "trash-2", Callback = function()
+		for _, c in ipairs(AIScroll:GetChildren()) do
+			if c:IsA("Frame") then c:Destroy() end
+		end
 		aiHistory = {}
+		addAIMessage("مرحباً! أنا botayf، اسألني أي شي", false)
 		notify("🧹", "تم")
 	end})
 else
-	AITab:Paragraph({Title = "🔒 VIP Only", Desc = "للمشتركين VIP وأعلى"})
-	AITab:Button({Title = "VIP wanna open? go to dis;)", Icon = "lock", Callback = function()
-		if setclipboard then setclipboard(DISCORD_LINK) end
-		notify("💎", "تم النسخ")
-	end})
+	AITab:Section({ Title = "🔒 VIP Only" })
+	AITab:Paragraph({Title = "🔒", Desc = "botayf AI للمشتركين VIP وأعلى"})
 end
 
--- ═══════════════════════════════════════════════════════════════════════
--- 🎫 TAB 9: Support
--- ═══════════════════════════════════════════════════════════════════════
+-- 🎫 TAB: Support (شات حقيقي — polling)
 local SupportTab = Window:Tab({ Title = "🎫 الدعم", Icon = "headphones" })
-SupportTab:Section({ Title = "🎫 الدعم البشري" })
-
-local supportMsg = ""
-SupportTab:Input({Title = "📝 رسالتك", Placeholder = "اكتب مشكلتك...", Callback = function(t) supportMsg = t end})
-SupportTab:Button({Title = "📤 إرسال", Icon = "send", Callback = function()
-	if supportMsg == "" then notify("⚠️", "اكتب رسالة") return end
-	sendSupport("[PLAYER] " .. LocalPlayer.Name .. " | " .. supportMsg, function(ok)
-		if ok then notify("✅", "تم الإرسال")
-		else notify("⚠️", "الدعم مشغول") end
-	end)
+SupportTab:Section({ Title = "💬 الدعم البشري" })
+SupportTab:Paragraph({Title = "💬", Desc = "اضغط الزر → تطلع نافذة الدردشة مع الإدارة\nالردود تجيك تلقائياً بدون تحديث"})
+SupportTab:Button({Title = "💬 فتح شات الدعم", Icon = "message-circle", Callback = function()
+	SupFrame.Visible = true
+	loadOldMessages()
+	SupInput:CaptureFocus()
+end})
+SupportTab:Button({Title = "🧹 مسح المحادثة", Icon = "trash-2", Callback = function()
+	for _, c in ipairs(SupScroll:GetChildren()) do
+		if c:IsA("Frame") then c:Destroy() end
+	end
+	shownMessages = {}
+	supMsgOrder = 0
+	addSupBubble("system", "أهلاً " .. LocalPlayer.Name .. " 👋\nاكتب رسالتك وسيتم إرسالها للدعم.", nil)
+	notify("🧹", "تم")
 end})
 
 -- ═══════════════════════════════════════════════════════════════════════
--- 👑 TAB 10: RANK MANAGEMENT
+-- 👑 TAB: OWNER PANEL
 -- ═══════════════════════════════════════════════════════════════════════
-if IS_ELITE then
-	local RankTab = Window:Tab({ Title = "👑 إدارة الرتب", Icon = "crown" })
+if IS_HELPER then
+	local PanelTab = Window:Tab({ Title = "👑 Owner Panel", Icon = "crown" })
 
-	RankTab:Section({ Title = "🎯 تعيين رتبة" })
-
-	local targetName = ""
-	local selectedRank = "VIP"
-
-	RankTab:Input({
-		Title = "👤 اسم اللاعب",
-		Placeholder = "PlayerName",
-		Callback = function(t) targetName = t end
+	PanelTab:Section({ Title = "👤 رتبتك" })
+	PanelTab:Paragraph({
+		Title = "💎 رتبتك الحالية",
+		Desc = (RANK_DATA[MY_RANK] and RANK_DATA[MY_RANK].emoji or "🎫") .. " " .. MY_RANK .. " (Power: " .. MY_POWER .. ")"
 	})
 
-	RankTab:Dropdown({
-		Title = "🏆 الرتبة",
-		Values = IS_OWNER and {"Owner", "CoOwner", "Elite", "Helper", "BlackMark", "Admin", "VIP", "Member"} or {"Elite", "Helper", "BlackMark", "Admin", "VIP", "Member"},
+	PanelTab:Divider()
+	PanelTab:Section({ Title = "🎯 تغيير رتبة لاعب" })
+
+	local targetPlayerName = ""
+	local selectedRankName = "VIP"
+
+	PanelTab:Input({
+		Title = "👤 اسم اللاعب (Roblox Username)",
+		Placeholder = "مثال: AMTbadboy",
+		Callback = function(t) targetPlayerName = t end
+	})
+
+	PanelTab:Dropdown({
+		Title = "🏆 الرتبة الجديدة",
+		Values = IS_OWNER and {
+			"Owner", "CoOwner", "SrAdmin", "Admin", "SrMod", "Mod", "Helper", "Elite", "VIP", "Member"
+		} or (IS_COOWNER and {
+			"SrAdmin", "Admin", "SrMod", "Mod", "Helper", "Elite", "VIP", "Member"
+		} or (IS_SRADMIN and {
+			"Admin", "SrMod", "Mod", "Helper", "Elite", "VIP", "Member"
+		} or (IS_ADMIN and {
+			"SrMod", "Mod", "Helper", "Elite", "VIP", "Member"
+		} or (IS_SRMOD and {
+			"Mod", "Helper", "Elite", "VIP", "Member"
+		} or (IS_MOD and {
+			"Helper", "Elite", "VIP", "Member"
+		} or {
+			"Elite", "VIP", "Member"
+		}))))),
 		Value = "VIP",
-		Callback = function(v) selectedRank = v end
+		Callback = function(v) selectedRankName = v end
 	})
 
-	RankTab:Button({
+	PanelTab:Button({
 		Title = "✅ تعيين الرتبة",
 		Icon = "check",
 		Callback = function()
-			if targetName == "" then notify("⚠️", "اكتب اسم اللاعب") return end
-			if not canManage(LocalPlayer.Name, selectedRank) then
-				notify("🚫", "ما عندك صلاحية تعطي هذه الرتبة")
+			if targetPlayerName == "" then notify("⚠️", "اكتب اسم اللاعب") return end
+			local targetRankPower = RANK_POWER[selectedRankName] or 0
+			if MY_POWER < 100 and targetRankPower >= MY_POWER then
+				notify("🚫", "ما تقدر تعطي رتبة أعلى أو مساوية لك")
 				return
 			end
-			if selectedRank ~= "Owner" and getRank(targetName) == "Owner" and not IS_OWNER then
+			if getRank(targetPlayerName) == "Owner" and not IS_OWNER then
 				notify("🚫", "ما تقدر تلمس Owner")
 				return
 			end
-			RANKS[targetName] = selectedRank
+			RANKS[targetPlayerName] = selectedRankName
 			saveRanks()
-			local t = Players:FindFirstChild(targetName)
+			task.spawn(function()
+				for i = 1, 3 do
+					broadcastSync("AMT_RANK::" .. targetPlayerName .. "::" .. selectedRankName)
+					task.wait(0.4)
+				end
+			end)
+			local t = Players:FindFirstChild(targetPlayerName)
 			if t then
 				removeHeadTag(t)
 				task.wait(0.2)
 				createHeadTag(t)
 			end
 			refreshHeadTags()
-			notify("👑", targetName .. " → " .. selectedRank)
-			SendWebhook("👑 تعيين رتبة",
-				"**Admin:** " .. LocalPlayer.Name .. " (" .. MY_RANK .. ")\n**Target:** " .. targetName .. "\n**Rank:** " .. selectedRank,
-				15844367)
+			notify("🎃", targetPlayerName .. " → " .. selectedRankName)
 		end
 	})
 
-	RankTab:Divider()
-
-	RankTab:Section({ Title = "🔻 تنزيل / حذف رتبة" })
-	RankTab:Button({
-		Title = "🗑️ حذف الرتبة (يرجع Member)",
+	PanelTab:Divider()
+	PanelTab:Section({ Title = "🔻 إزالة الرتبة" })
+	PanelTab:Button({
+		Title = "🗑️ تحويل إلى Member",
 		Icon = "trash-2",
 		Callback = function()
-			if targetName == "" then notify("⚠️", "اكتب اسم") return end
-			if not canManage(LocalPlayer.Name, getRank(targetName)) then
-				notify("🚫", "ما تقدر تنزل شخص أقوى منك")
-				return
-			end
-			if getRank(targetName) == "Owner" and not IS_OWNER then
-				notify("🚫", "ما تقدر تلمس Owner")
-				return
-			end
-			RANKS[targetName] = "Member"
+			if targetPlayerName == "" then notify("⚠️", "اكتب اسم اللاعب") return end
+			if getRank(targetPlayerName) == "Owner" and not IS_OWNER then notify("🚫", "ما تقدر تلمس Owner") return end
+			if getPower(targetPlayerName) >= MY_POWER and not IS_OWNER then notify("🚫", "ما تقدر تنزل شخص أقوى") return end
+			RANKS[targetPlayerName] = "Member"
 			saveRanks()
-			local t = Players:FindFirstChild(targetName)
+			task.spawn(function()
+				for i = 1, 3 do
+					broadcastSync("AMT_RANK::" .. targetPlayerName .. "::Member")
+					task.wait(0.4)
+				end
+			end)
+			local t = Players:FindFirstChild(targetPlayerName)
 			if t then removeHeadTag(t) end
 			refreshHeadTags()
-			notify("🔻", targetName .. " صار Member")
+			notify("🔻", targetPlayerName .. " صار Member")
 		end
 	})
 
-	RankTab:Button({
-		Title = "🚫 طرد من السكربت + السيرفر",
+	PanelTab:Divider()
+	PanelTab:Section({ Title = "🚫 طرد لاعب" })
+	PanelTab:Button({
+		Title = "🚫 طرد اللاعب من السكربت",
 		Icon = "ban",
 		Callback = function()
-			if targetName == "" then notify("⚠️", "اكتب اسم") return end
-			if not canManage(LocalPlayer.Name, getRank(targetName)) then
-				notify("🚫", "ما تقدر تطرد شخص أقوى منك")
-				return
-			end
-			if getRank(targetName) == "Owner" and not IS_OWNER then
-				notify("🚫", "ما تقدر تطرد Owner")
-				return
-			end
-			KICKED_USERS[targetName] = {
+			if targetPlayerName == "" then notify("⚠️", "اكتب اسم اللاعب") return end
+			if getRank(targetPlayerName) == "Owner" and not IS_OWNER then notify("🚫", "ما تقدر تطرد Owner") return end
+			if getPower(targetPlayerName) >= MY_POWER and not IS_OWNER then notify("🚫", "ما تقدر تطرد شخص أقوى") return end
+			KICKED_USERS[targetPlayerName] = {
 				reason = "من الإدارة",
 				by = LocalPlayer.Name,
 				time = os.date("%Y-%m-%d %H:%M:%S"),
 			}
 			saveKicked()
-			local t = Players:FindFirstChild(targetName)
-			if t then pcall(function() t:Kick("🚫 تم طردك من AMT") end) end
-			notify("🚫", "تم الطرد")
+			task.spawn(function()
+				for i = 1, 5 do
+					broadcastSync("AMT_KICK::" .. targetPlayerName .. "::من الإدارة")
+					task.wait(0.4)
+				end
+			end)
+			local t = Players:FindFirstChild(targetPlayerName)
+			if t then
+				pcall(function() t:Kick("🚫 تم طردك من AMT\nالسبب: من الإدارة") end)
+			end
+			notify("🚫", "تم الطرد: " .. targetPlayerName)
 		end
 	})
 
-	RankTab:Divider()
-	RankTab:Section({ Title = "📋 قائمة الرتب النشطة" })
+	PanelTab:Divider()
+	PanelTab:Section({ Title = "🔓 إلغاء الطرد" })
+	PanelTab:Button({
+		Title = "🔓 إلغاء طرد اللاعب المكتوب",
+		Icon = "unlock",
+		Callback = function()
+			if targetPlayerName == "" then notify("⚠️", "اكتب اسم اللاعب") return end
+			if KICKED_USERS[targetPlayerName] then
+				KICKED_USERS[targetPlayerName] = nil
+				saveKicked()
+				task.spawn(function()
+					for i = 1, 3 do
+						broadcastSync("AMT_UNKICK::" .. targetPlayerName)
+						task.wait(0.4)
+					end
+				end)
+				notify("✅", targetPlayerName .. " تم إلغاء طرده")
+			else
+				notify("⚠️", targetPlayerName .. " مو في قائمة المطرودين")
+			end
+		end
+	})
 
-	local RankList = RankTab:Paragraph({Title = "👥", Desc = "..."})
+	PanelTab:Button({
+		Title = "📋 عرض قائمة المطرودين",
+		Icon = "list",
+		Callback = function()
+			local count = 0
+			local list = {}
+			for name, data in pairs(KICKED_USERS) do
+				count = count + 1
+				table.insert(list, "🚫 " .. name)
+			end
+			if count == 0 then notify("📋", "لا يوجد مطرودين")
+			else notify("📋 عدد المطرودين: " .. count, table.concat(list, "\n")) end
+		end
+	})
+
+	PanelTab:Divider()
+	PanelTab:Section({ Title = "📋 قائمة المطرودين" })
+	local KickedList = PanelTab:Paragraph({Title = "🚫", Desc = "..."})
+	task.spawn(function()
+		while true do
+			task.wait(3)
+			local list = {}
+			for name, data in pairs(KICKED_USERS) do
+				table.insert(list, "🚫 " .. name .. " — " .. tostring(data.reason))
+			end
+			pcall(function()
+				KickedList:SetDesc(#list == 0 and "لا يوجد مطرودين" or table.concat(list, "\n"))
+			end)
+		end
+	end)
+
+	if IS_OWNER then
+		PanelTab:Button({
+			Title = "✅ إلغاء طرد الكل (Owner فقط)",
+			Icon = "check-circle",
+			Callback = function()
+				for name, _ in pairs(KICKED_USERS) do
+					task.spawn(function()
+						for i = 1, 3 do
+							broadcastSync("AMT_UNKICK::" .. name)
+							task.wait(0.3)
+						end
+					end)
+				end
+				KICKED_USERS = {}
+				saveKicked()
+				notify("✅", "تم مسح قائمة المطرودين كاملة")
+			end
+		})
+	end
+
+	PanelTab:Divider()
+	PanelTab:Section({ Title = "📋 قائمة الرتب" })
+	local RankList = PanelTab:Paragraph({Title = "👥", Desc = "..."})
 	task.spawn(function()
 		while true do
 			task.wait(2)
@@ -1920,78 +2290,38 @@ if IS_ELITE then
 		end
 	end)
 
-	if IS_OWNER then
-		RankTab:Divider()
-		RankTab:Section({ Title = "📋 المطرودين" })
-		local KickedList = RankTab:Paragraph({Title = "🚫", Desc = "..."})
-		task.spawn(function()
-			while true do
-				task.wait(3)
-				local list = {}
-				for name, data in pairs(KICKED_USERS) do
-					table.insert(list, "🚫 " .. name .. " — " .. tostring(data.reason))
-				end
-				pcall(function() KickedList:SetDesc(#list == 0 and "لا يوجد" or table.concat(list, "\n")) end)
-			end
-		end)
-
-		RankTab:Button({
-			Title = "✅ إلغاء طرد الكل",
-			Icon = "check-circle",
-			Callback = function()
-				KICKED_USERS = {}
-				saveKicked()
-				notify("✅", "تم مسح قائمة المطرودين")
-			end
-		})
-
-		RankTab:Divider()
-		RankTab:Section({ Title = "🏆 فريق الإدارة" })
-		RankTab:Paragraph({
-			Title = "👑 AMT Team",
-			Desc = "👑 Owner: ztjzfzjrh\n👑 Owner: tegrugjvd\n🛡️ CoOwner: Brooknoob_55\n⚫ BlackMark: 1KamRP"
-		})
-	end
+	PanelTab:Divider()
+	PanelTab:Section({ Title = "🎃 فريق الإدارة" })
+	PanelTab:Paragraph({
+		Title = "👑 AMT Team",
+		Desc = "👑 Owner: ztjzfzjrh\n👑 Owner: tegrugjvd\n👑 Owner: AMTbadboy"
+	})
 end
 
--- ═══════════════════════════════════════════════════════════════════════
--- ⚙️ TAB 11: Settings
--- ═══════════════════════════════════════════════════════════════════════
+-- ⚙️ TAB: Settings
 local SetTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 SetTab:Section({ Title = "🎨 تخصيص" })
 SetTab:Slider({Title = "📏 مدة الإشعارات", Step = 1, Value = {Min = 2, Max = 15, Default = 5}, Callback = function(v) _G.AMT.NotificationDuration = v end})
 SetTab:Toggle({Title = "🔔 الإشعارات", Default = true, Callback = function(s) _G.AMT.ShowNotifications = s end})
-SetTab:Toggle({Title = "🏷️ Head Tags", Default = true, Callback = function(s) _G.AMT.ESPVIPTags = s end})
 SetTab:Divider()
-SetTab:Button({Title = "🌙 Dark", Callback = function() Window:SetTheme("Dark"); notify("🎨", "Dark") end})
-SetTab:Button({Title = "☀️ Light", Callback = function() Window:SetTheme("Light"); notify("🎨", "Light") end})
-SetTab:Button({Title = "💜 MonokaiPro", Callback = function() Window:SetTheme("MonokaiPro"); notify("🎨", "Monokai") end})
-SetTab:Divider()
-SetTab:Button({Title = "📋 نسخ Discord", Icon = "clipboard", Callback = function()
-	if setclipboard then setclipboard(DISCORD_LINK); notify("📋", "تم") end
-end})
+SetTab:Button({Title = "🖤 Dark", Callback = function() Window:SetTheme("Dark"); notify("🎃", "Dark") end})
+SetTab:Button({Title = "🎃 Light", Callback = function() Window:SetTheme("Light"); notify("🎃", "Light") end})
 
--- ═══════════════════════════════════════════════════════════════════════
--- ℹ️ TAB 12: Info
--- ═══════════════════════════════════════════════════════════════════════
+-- ℹ️ TAB: Info
 local InfoTab = Window:Tab({ Title = "Info", Icon = "info" })
 InfoTab:Section({ Title = "📋 معلومات" })
 InfoTab:Paragraph({Title = "👤", Desc = LocalPlayer.Name .. "\nID: " .. LocalPlayer.UserId})
 local rd = RANK_DATA[MY_RANK] or RANK_DATA.Member
-InfoTab:Paragraph({Title = "💎 الرتبة", Desc = rd.emoji .. " " .. MY_RANK .. " (Power: " .. MY_POWER .. ")"})
-InfoTab:Paragraph({Title = "🛡️ الحماية", Desc = "✅ مفعلة تلقائياً"})
-InfoTab:Paragraph({Title = "🎯 Auto Engage v3", Desc = "✅ بلوكة أمان + يوقف الفارم + يذبح مستمر"})
-InfoTab:Paragraph({Title = "📅 الإصدار", Desc = "v21.0.0 | ULTIMATE + SAFE BLOCK"})
+InfoTab:Paragraph({Title = "🎃 الرتبة", Desc = rd.emoji .. " " .. MY_RANK .. " (Power: " .. MY_POWER .. ")"})
+InfoTab:Paragraph({Title = "💬 Support", Desc = "✅ شات حقيقي + polling"})
+InfoTab:Paragraph({Title = "👑 Owner Panel", Desc = IS_HELPER and "✅ متاح لك" or "🔒 Helper+"})
+InfoTab:Paragraph({Title = "📅 الإصدار", Desc = "v33.0.0"})
 
--- ═══════════════════════════════════════════════════════════════════════
 -- 📡 REMOTE EVENTS
--- ═══════════════════════════════════════════════════════════════════════
 pcall(function()
 	RS.Remotes.Gameplay.RoundStart.OnClientEvent:Connect(function(time, playersData)
 		if type(playersData) == "table" then
-			for name, info in pairs(playersData) do
-				applyRoleFromData(name, info)
-			end
+			for name, info in pairs(playersData) do applyRoleFromData(name, info) end
 		end
 		_G.AMT.RoundActive = true
 		_G.AMT.CollectedCoins = 0
@@ -2031,41 +2361,20 @@ UIS.InputBegan:Connect(function(input, gp)
 			_G.AMT.AutoEngageKilled = false
 			SafeBlock.Position = Vector3.new(0, 99999, 0)
 			task.spawn(farmLoop)
-			notify("✅", "الفارم شغال")
+			notify("🎃", "الفارم شغال")
 		else
 			if CurrentTween then CurrentTween:Cancel(); CurrentTween = nil end
 			Platform.CFrame = CFrame.new(0, 99999, 0)
 			unfreezeAll()
-			notify("🔴", "توقف")
+			notify("🖤", "توقف")
 		end
 	end
 end)
 
-notify("🏆 AMT MEGA v21.0", "بلوكة أمان + Auto Engage!")
+notify("🎃 AMT MEGA v33.0", "Support شات حقيقي + polling!")
 
-getgenv().AMTMegaHub = {
-	notify = notify,
-	askAI = askAI,
-	getRank = getRank,
-	myRank = MY_RANK,
-	isVIP = function() return IS_VIP end,
-	isElite = function() return IS_ELITE end,
-	isOwner = function() return IS_OWNER end,
-	setRank = function(name, rank)
-		if canManage(LocalPlayer.Name, rank) then
-			RANKS[name] = rank
-			saveRanks()
-			refreshHeadTags()
-			return true
-		end
-		return false
-	end,
-	toggleAutoEngage = function(state) _G.AMT.AutoEngageEnabled = state end,
-}
-
-print("✅ AMT MEGA HUB v21.0 Loaded 🏆")
+print("✅ AMT MEGA HUB v33.0 Loaded 🎃")
 print("👑 Rank: " .. MY_RANK .. " | Power: " .. MY_POWER)
-print("👑 Owners: ztjzfzjrh + tegrugjvd")
-print("🎯 Auto Engage v3: بلوكة أمان + ذبح مستمر")
-print("🎭 ESP Roles: FIXED")
-print("💰 ESP Coins: FIXED")
+print("💬 Support: شات حقيقي + polling كل ثانيتين")
+print("🎯 Aimbot: على القاتل فقط")
+print("🔫 Auto Grab Gun: موجود")
