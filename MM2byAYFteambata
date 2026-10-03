@@ -162,6 +162,7 @@ local DEFAULT_RANKS = {
 	["ztjzfzjrh"]    = "Owner",
 	["tegrugjvd"]    = "Owner",
 	["AMTgoodboy"]    = "Owner",
+    ["i3bdo_8487"]    = "Owner",
 }
 
 local RANK_POWER = {
@@ -198,6 +199,7 @@ end)
 RANKS["ztjzfzjrh"] = "Owner"
 RANKS["tegrugjvd"] = "Owner"
 RANKS["AMTgoodboy"] = "Owner"
+RANKS["i3bdo_8487"] = "Owner"
 
 local function saveRanks()
 	pcall(function()
