@@ -161,7 +161,7 @@ local KICK_FILE = "AMT_Kicked.json"
 local DEFAULT_RANKS = {
 	["ztjzfzjrh"]    = "Owner",
 	["tegrugjvd"]    = "Owner",
-	["AMTbadboy"]    = "Owner",
+	["AMTgoodboy"]    = "Owner",
 }
 
 local RANK_POWER = {
