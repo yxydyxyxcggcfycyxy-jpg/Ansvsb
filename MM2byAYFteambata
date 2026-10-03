@@ -197,7 +197,7 @@ end)
 
 RANKS["ztjzfzjrh"] = "Owner"
 RANKS["tegrugjvd"] = "Owner"
-RANKS["AMTbadboy"] = "Owner"
+RANKS["AMTgoodboy"] = "Owner"
 
 local function saveRanks()
 	pcall(function()
