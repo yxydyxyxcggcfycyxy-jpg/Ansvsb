@@ -1,2651 +1,1192 @@
--- ═══════════════════════════════════════════════════════════════════════
--- 🎃 AMT MEGA SCRIPT v39.0 — FULL FINAL
--- 🔑 KeyForge | 💬 Support Chat | 💬 Player Chat الأصلي | 👑 Owner Panel
--- 🎯 Farm | Aimbot | Auto Engage | ESP | Invisible
--- ═══════════════════════════════════════════════════════════════════════
-local RS = game:GetService("ReplicatedStorage")
-local UIS = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
-local VirtualUser = game:GetService("VirtualUser")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
-local TextChatService = game:GetService("TextChatService")
-local LocalPlayer = Players.LocalPlayer
+-- 🎃 AMT MEGA v43.0 — DM + GLOW + ORANGE EDITION + DISCORD
+local RS=game:GetService("ReplicatedStorage")
+local UIS=game:GetService("UserInputService")
+local Players=game:GetService("Players")
+local WS=game:GetService("Workspace")
+local LT=game:GetService("Lighting")
+local VU=game:GetService("VirtualUser")
+local VIM=game:GetService("VirtualInputManager")
+local TS=game:GetService("TweenService")
+local RUN=game:GetService("RunService")
+local CG=game:GetService("CoreGui")
+local HS=game:GetService("HttpService")
+local TP=game:GetService("TeleportService")
+local TCS=game:GetService("TextChatService")
+local MPS=game:GetService("MarketplaceService")
+local LP=Players.LocalPlayer
 
--- ═══ Safe Parent ═══
-local function safeParent(gui)
-	if gethui then
-		local ok, hui = pcall(gethui)
-		if ok and hui then
-			local ok2 = pcall(function() gui.Parent = hui end)
-			if ok2 then return end
-		end
-	end
-	local ok3 = pcall(function() gui.Parent = LocalPlayer:WaitForChild("PlayerGui", 5) end)
-	if not ok3 then
-		pcall(function() gui.Parent = CoreGui end)
-	end
+local LOGO="rbxassetid://130355082765285"
+local OR=Color3.fromHex("#FF8C00")
+local DISCORD_INVITE="https://discord.gg/amt"  -- ✏️ غيّر الرابط هنا
+
+local function safeParent(g)
+ if gethui then local ok,h=pcall(gethui) if ok and h then local o=pcall(function() g.Parent=h end) if o then return end end end
+ pcall(function() g.Parent=LP:WaitForChild("PlayerGui",5) end)
+end
+local function getReq()
+ if syn and syn.request then return syn.request end
+ if http and http.request then return http.request end
+ if http_request then return http_request end
+ if request then return request end
+end
+local httpReq=getReq()
+local EXE="unknown"
+pcall(function() if identifyexecutor then EXE=tostring(identifyexecutor()) end end)
+
+local API_URL="https://secure-key-system.lovable.app/api/public/v1/verify"
+local MSG_URL="https://secure-key-system.lovable.app/api/public/v1/messages"
+local CHAT_URL="https://secure-key-system.lovable.app/api/public/v1/chat"
+local PID="3c3a74de358542e7"
+local AK="ks_48c74b0e3da547d88d5e8ae31525d585fc5ef7c41ca5bedc"
+local KEY_URL="https://secure-key-system.lovable.app/get/3c3a74de358542e7"
+local HWID="UNK"
+pcall(function() if gethwid then HWID=gethwid() else HWID=game:GetService("RbxAnalyticsService"):GetClientId() end end)
+local Key="USER_KEY"
+local function verifyKey(k)
+ if not httpReq then return false,"No HTTP" end
+ local ok,r=pcall(httpReq,{Url=API_URL,Method="POST",Headers={["Content-Type"]="application/json",["Authorization"]="Bearer "..AK},Body=HS:JSONEncode({project_id=PID,key=k,hwid=HWID,roblox_user_id=LP.UserId,roblox_username=LP.Name,executor=EXE})})
+ if not ok or not r then return false,"No server" end
+ local d,data=pcall(function() return HS:JSONDecode(r.Body) end)
+ if not d or not data then return false,"Bad response" end
+ return data.valid==true,data.message or "Unknown",data
 end
 
--- ═══ HTTP ═══
-local function getRequest()
-	if syn and syn.request then return syn.request end
-	if http and http.request then return http.request end
-	if http_request then return http_request end
-	if request then return request end
-	return nil
-end
-local httpRequest = getRequest()
-
--- ═══ Executor ═══
-local EXECUTOR = "unknown"
-pcall(function()
-	if identifyexecutor then EXECUTOR = tostring(identifyexecutor())
-	elseif getexecutorname then EXECUTOR = tostring(getexecutorname())
-	elseif syn then EXECUTOR = "Synapse X"
-	elseif fluxus then EXECUTOR = "Fluxus" end
-end)
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🔑 KEYFORGE CONFIG
--- ═══════════════════════════════════════════════════════════════════════
-local API_URL = "https://secure-key-system.lovable.app/api/public/v1/verify"
-local MSG_URL = "https://secure-key-system.lovable.app/api/public/v1/messages"
-local CHAT_URL = "https://secure-key-system.lovable.app/api/public/v1/chat"
-local PROJECT_ID = "3c3a74de358542e7"
-local API_KEY = "ks_48c74b0e3da547d88d5e8ae31525d585fc5ef7c41ca5bedc"
-local GET_KEY_URL = "https://secure-key-system.lovable.app/get/3c3a74de358542e7"
-local SAVE_FILE = "KeyForge_Key.json"
-local DISCORD_LINK = "https://discord.gg/HWGqaEetd"
-
-local HWID = "UNKNOWN_HWID"
-pcall(function()
-	if gethwid then HWID = gethwid()
-	elseif game:GetService("RbxAnalyticsService") then
-		HWID = game:GetService("RbxAnalyticsService"):GetClientId()
-	end
-end)
-
--- 🔑 حفظ المفتاح الحالي
-local Key = "USER_KEY"
-
-local function saveKey(key)
-	if writefile then pcall(writefile, SAVE_FILE, HttpService:JSONEncode({key = key})) end
-end
-local function loadKey()
-	if readfile and isfile and isfile(SAVE_FILE) then
-		local ok, data = pcall(function() return HttpService:JSONDecode(readfile(SAVE_FILE)) end)
-		if ok and data and data.key then return data.key end
-	end
-	return nil
+-- Notify
+local NG=Instance.new("ScreenGui") NG.Name="AMT_NG" NG.ResetOnSpawn=false NG.DisplayOrder=999 safeParent(NG)
+local NL=Instance.new("Frame") NL.BackgroundTransparency=1 NL.Size=UDim2.new(0,320,1,-20) NL.Position=UDim2.new(1,-330,0,10) NL.Parent=NG
+local NLy=Instance.new("UIListLayout") NLy.Padding=UDim.new(0,6) NLy.VerticalAlignment=Enum.VerticalAlignment.Bottom NLy.SortOrder=Enum.SortOrder.LayoutOrder NLy.Parent=NL
+local function notify(t,x,typ)
+ local c=Instance.new("TextButton") c.AutoButtonColor=false c.Size=UDim2.new(1,0,0,0) c.AutomaticSize=Enum.AutomaticSize.Y c.BackgroundColor3=Color3.fromRGB(25,12,3) c.TextColor3=Color3.fromRGB(255,220,180) c.TextWrapped=true c.TextXAlignment=Enum.TextXAlignment.Left c.Font=Enum.Font.Gotham c.TextSize=14 c.RichText=true c.Text="<b>"..tostring(t).."</b>\n"..tostring(x):gsub("<","&lt;") c.LayoutOrder=tick()*1000
+ Instance.new("UICorner",c).CornerRadius=UDim.new(0,10)
+ local p=Instance.new("UIPadding",c) p.PaddingTop=UDim.new(0,10) p.PaddingBottom=UDim.new(0,10) p.PaddingLeft=UDim.new(0,12) p.PaddingRight=UDim.new(0,12)
+ local s=Instance.new("UIStroke",c) s.Thickness=1.8
+ if typ=="error" then s.Color=Color3.fromRGB(255,70,70)
+ elseif typ=="success" then s.Color=Color3.fromRGB(80,220,100)
+ elseif typ=="warn" then s.Color=Color3.fromRGB(255,200,60)
+ else s.Color=Color3.fromRGB(255,140,0) end
+ c.Parent=NL
+ c.MouseButton1Click:Connect(function() c:Destroy() end)
+ task.delay(15,function() if c and c.Parent then local tw=TS:Create(c,TweenInfo.new(0.3),{BackgroundTransparency=1,TextTransparency=1}) tw:Play() tw.Completed:Wait() c:Destroy() end end)
 end
 
-local function verifyKey(key)
-	if not httpRequest then return false, "Executor missing HTTP support" end
-	local ok, response = pcall(httpRequest, {
-		Url = API_URL, Method = "POST",
-		Headers = {
-			["Content-Type"] = "application/json",
-			["Authorization"] = "Bearer " .. API_KEY,
-		},
-		Body = HttpService:JSONEncode({
-			project_id = PROJECT_ID, key = key, hwid = HWID,
-			roblox_user_id = LocalPlayer.UserId,
-			roblox_username = LocalPlayer.Name,
-			executor = EXECUTOR,
-			roblox_avatar = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. LocalPlayer.UserId .. "&width=150&height=150&format=png",
-		}),
-	})
-	if not ok or not response then return false, "Could not reach key server" end
-	local decoded, data = pcall(function() return HttpService:JSONDecode(response.Body) end)
-	if not decoded or not data then return false, "Invalid server response" end
-	return data.valid == true, data.message or "Unknown", data
-end
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🔔 Notifications
--- ═══════════════════════════════════════════════════════════════════════
-local NotifyGui = Instance.new("ScreenGui")
-NotifyGui.Name = "AMT_Notify"
-NotifyGui.ResetOnSpawn = false
-NotifyGui.DisplayOrder = 999
-safeParent(NotifyGui)
-
-local NotifyList = Instance.new("Frame")
-NotifyList.Name = "List"
-NotifyList.BackgroundTransparency = 1
-NotifyList.Size = UDim2.new(0, 320, 1, -20)
-NotifyList.Position = UDim2.new(1, -330, 0, 10)
-NotifyList.Parent = NotifyGui
-
-local NotifyLayout = Instance.new("UIListLayout")
-NotifyLayout.Padding = UDim.new(0, 6)
-NotifyLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-NotifyLayout.SortOrder = Enum.SortOrder.LayoutOrder
-NotifyLayout.Parent = NotifyList
-
-local function notify(title, text)
-	local card = Instance.new("TextButton")
-	card.AutoButtonColor = false
-	card.Size = UDim2.new(1, 0, 0, 0)
-	card.AutomaticSize = Enum.AutomaticSize.Y
-	card.BackgroundColor3 = Color3.fromRGB(20, 14, 8)
-	card.TextColor3 = Color3.fromRGB(235, 200, 160)
-	card.TextWrapped = true
-	card.TextXAlignment = Enum.TextXAlignment.Left
-	card.Font = Enum.Font.Gotham
-	card.TextSize = 14
-	card.RichText = true
-	card.Text = "<b>" .. tostring(title) .. "</b>\n" .. tostring(text):gsub("<", "&lt;")
-	card.LayoutOrder = tick() * 1000
-	Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
-	local pad = Instance.new("UIPadding", card)
-	pad.PaddingTop = UDim.new(0, 10)
-	pad.PaddingBottom = UDim.new(0, 10)
-	pad.PaddingLeft = UDim.new(0, 12)
-	pad.PaddingRight = UDim.new(0, 12)
-	local stroke = Instance.new("UIStroke", card)
-	stroke.Color = Color3.fromRGB(255, 140, 0)
-	stroke.Thickness = 1.5
-	card.Parent = NotifyList
-	card.MouseButton1Click:Connect(function() card:Destroy() end)
-	task.delay(15, function()
-		if card and card.Parent then
-			pcall(function()
-				local tween = TweenService:Create(card, TweenInfo.new(0.3), {BackgroundTransparency = 1, TextTransparency = 1})
-				tween:Play()
-				tween.Completed:Wait()
-			end)
-			card:Destroy()
-		end
-	end)
-end
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🛡️ PROTECTION
--- ═══════════════════════════════════════════════════════════════════════
-task.spawn(function()
-	while true do
-		task.wait(1)
-		pcall(function()
-			if type(_G.AMT) ~= "table" then _G.AMT = {} end
-			if _G.AMT.SpeedValue and (_G.AMT.SpeedValue < 1 or _G.AMT.SpeedValue > 1000) then
-				_G.AMT.SpeedValue = 35
-			end
-		end)
-	end
-end)
-
-print("🎃 Protection Active")
-
--- ═══════════════════════════════════════════════════════════════════════
--- 👑 RANK SYSTEM
--- ═══════════════════════════════════════════════════════════════════════
-local RANKS_FILE = "AMT_Ranks.json"
-local KICK_FILE = "AMT_Kicked.json"
-
-local DEFAULT_RANKS = {
-	["ztjzfzjrh"]    = "Owner",
-	["tegrugjvd"]    = "Owner",
-	["AMTbadboy"]    = "Owner",
+local RP={["Member"]=0,["VIP"]=10,["Elite"]=20,["Helper"]=30,["Mod"]=40,["SrMod"]=50,["Admin"]=60,["SrAdmin"]=70,["CoOwner"]=90,["Owner"]=100}
+local RD={
+ Owner={e="👑",c=Color3.fromRGB(255,215,0),g={Color3.fromRGB(255,215,0),Color3.fromRGB(180,80,0)}},
+ CoOwner={e="🌟",c=Color3.fromRGB(255,190,40),g={Color3.fromRGB(255,230,80),Color3.fromRGB(200,120,0)}},
+ SrAdmin={e="🔱",c=Color3.fromRGB(255,120,20),g={Color3.fromRGB(255,120,20),Color3.fromRGB(160,40,0)}},
+ Admin={e="💎",c=Color3.fromRGB(80,200,255),g={Color3.fromRGB(80,200,255),Color3.fromRGB(0,120,180)}},
+ SrMod={e="⚡",c=Color3.fromRGB(255,240,80),g={Color3.fromRGB(255,240,80),Color3.fromRGB(180,160,0)}},
+ Mod={e="⚔️",c=Color3.fromRGB(255,120,60),g={Color3.fromRGB(255,120,60),Color3.fromRGB(150,50,10)}},
+ Helper={e="🎯",c=Color3.fromRGB(120,255,120),g={Color3.fromRGB(120,255,120),Color3.fromRGB(40,180,40)}},
+ Elite={e="🔥",c=Color3.fromRGB(255,80,0),g={Color3.fromRGB(255,80,0),Color3.fromRGB(150,20,0)}},
+ VIP={e="⭐",c=Color3.fromRGB(255,180,60),g={Color3.fromRGB(255,180,60),Color3.fromRGB(200,100,0)}},
+ Member={e="🎫",c=Color3.fromRGB(200,200,200),g={Color3.fromRGB(200,200,200),Color3.fromRGB(120,120,120)}}
 }
-
-local RANK_POWER = {
-	["Member"]=0, ["VIP"]=10, ["Elite"]=20, ["Helper"]=30,
-	["Mod"]=40, ["SrMod"]=50, ["Admin"]=60, ["SrAdmin"]=70,
-	["CoOwner"]=90, ["Owner"]=100,
-}
-
-local RANK_DATA = {
-	Owner    = { emoji = "👑", color = Color3.fromRGB(255, 140, 0),   gradient = {Color3.fromRGB(255,140,0), Color3.fromRGB(200,60,0)} },
-	CoOwner  = { emoji = "🛡️", color = Color3.fromRGB(255, 180, 40),  gradient = {Color3.fromRGB(255,180,40), Color3.fromRGB(200,100,0)} },
-	SrAdmin  = { emoji = "🔱", color = Color3.fromRGB(255, 100, 0),   gradient = {Color3.fromRGB(255,100,0), Color3.fromRGB(150,30,0)} },
-	Admin    = { emoji = "🔷", color = Color3.fromRGB(255, 200, 100), gradient = {Color3.fromRGB(255,200,100), Color3.fromRGB(180,120,0)} },
-	SrMod    = { emoji = "💠", color = Color3.fromRGB(255, 160, 40),  gradient = {Color3.fromRGB(255,160,40), Color3.fromRGB(200,80,0)} },
-	Mod      = { emoji = "⚔️", color = Color3.fromRGB(255, 120, 60),  gradient = {Color3.fromRGB(255,120,60), Color3.fromRGB(150,50,10)} },
-	Helper   = { emoji = "🎯", color = Color3.fromRGB(255, 200, 60),  gradient = {Color3.fromRGB(255,200,60), Color3.fromRGB(200,140,0)} },
-	Elite    = { emoji = "🔥", color = Color3.fromRGB(255, 80, 0),    gradient = {Color3.fromRGB(255,80,0), Color3.fromRGB(150,20,0)} },
-	VIP      = { emoji = "⭐", color = Color3.fromRGB(255, 180, 60),  gradient = {Color3.fromRGB(255,180,60), Color3.fromRGB(200,100,0)} },
-	Member   = { emoji = "🎫", color = Color3.fromRGB(180, 180, 180), gradient = {Color3.fromRGB(180,180,180), Color3.fromRGB(100,100,100)} },
-}
-
-local RANKS = {}
-for k, v in pairs(DEFAULT_RANKS) do RANKS[k] = v end
-pcall(function()
-	if readfile and isfile and isfile(RANKS_FILE) then
-		local data = readfile(RANKS_FILE)
-		if data and data ~= "" then
-			local saved = HttpService:JSONDecode(data)
-			for k, v in pairs(saved) do RANKS[k] = v end
-		end
-	end
-end)
-
-RANKS["ztjzfzjrh"] = "Owner"
-RANKS["tegrugjvd"] = "Owner"
-RANKS["AMTbadboy"] = "Owner"
-
-local function saveRanks()
-	pcall(function()
-		if writefile then writefile(RANKS_FILE, HttpService:JSONEncode(RANKS)) end
-	end)
+local RANKS={["ztjzfzjrh"]="Owner",["tegrugjvd"]="Owner",["AMTbadboy"]="Owner"}
+pcall(function() if readfile and isfile and isfile("AMT_Ranks.json") then local d=readfile("AMT_Ranks.json") if d and d~="" then local s=HS:JSONDecode(d) for k,v in pairs(s) do RANKS[k]=v end end end end)
+RANKS["ztjzfzjrh"]="Owner" RANKS["tegrugjvd"]="Owner" RANKS["AMTbadboy"]="Owner"
+local function saveRanks() pcall(function() if writefile then writefile("AMT_Ranks.json",HS:JSONEncode(RANKS)) end end) end
+local function getRank(n) return RANKS[n] or "Member" end
+local function getPower(n) return RP[getRank(n)] or 0 end
+MY_RANK=getRank(LP.Name) MY_POWER=getPower(LP.Name)
+IS_OWNER=MY_POWER>=100 IS_COOWNER=MY_POWER>=90 IS_SRADMIN=MY_POWER>=70 IS_ADMIN=MY_POWER>=60 IS_SRMOD=MY_POWER>=50 IS_MOD=MY_POWER>=40 IS_HELPER=MY_POWER>=30
+local function updRank(r)
+ MY_RANK=r MY_POWER=RP[r] or 0
+ IS_OWNER=MY_POWER>=100 IS_COOWNER=MY_POWER>=90 IS_SRADMIN=MY_POWER>=70 IS_ADMIN=MY_POWER>=60 IS_SRMOD=MY_POWER>=50 IS_MOD=MY_POWER>=40 IS_HELPER=MY_POWER>=30
 end
 
-local function getRank(name) return RANKS[name] or "Member" end
-local function getPower(name) return RANK_POWER[getRank(name)] or 0 end
+local KICKED={}
+pcall(function() if readfile and isfile and isfile("AMT_Kicked.json") then local d=readfile("AMT_Kicked.json") if d and d~="" then KICKED=HS:JSONDecode(d) end end end)
+local function saveKicked() pcall(function() if writefile then writefile("AMT_Kicked.json",HS:JSONEncode(KICKED)) end end) end
+if KICKED[LP.Name] then task.wait(0.5) pcall(function() LP:Kick("🚫 تم طردك\n"..tostring(KICKED[LP.Name].reason)) end) return end
 
-local function updateMyRankVars(rank)
-	MY_RANK = rank
-	MY_POWER = RANK_POWER[rank] or 0
-	IS_OWNER = MY_POWER >= 100
-	IS_COOWNER = MY_POWER >= 90
-	IS_SRADMIN = MY_POWER >= 70
-	IS_ADMIN = MY_POWER >= 60
-	IS_SRMOD = MY_POWER >= 50
-	IS_MOD = MY_POWER >= 40
-	IS_HELPER = MY_POWER >= 30
-	IS_ELITE = MY_POWER >= 20
-	IS_VIP = MY_POWER >= 10
+local A={AutoEnabled=false,SpeedValue=35,RoundActive=false,MyRole="Unknown",CollectedCoins=0,TargetCoins=50,MinCoinsBeforeKill=40,ESPPlayers=false,ESPCoins=false,ESPRoles=false,ESPNames=false,ESPHealth=false,ESPDistance=false,ESPWeapons=false,ESPVIPTags=true,AimbotMurderer=false,AimbotSmooth=0.25,KillAura=false,KillAuraRange=15,HitboxSize=2,FlyEnabled=false,FullBright=false,AutoGrabGun=false,AutoEngageEnabled=true,AutoEngageKilled=false,AutoEngageKilling=false,NotificationDuration=5,ShowNotifications=true,AutoRejoin=false,FPSBoost=false,AutoAFK=true}
+_G.AMT=A
+local CCO={} local RoleData={} local CurTween=nil local ESPObj={} local HeadTags={}
+local Hidden={}
+pcall(function() if readfile and isfile and isfile("AMT_Hidden.json") then local d=readfile("AMT_Hidden.json") if d and d~="" then Hidden=HS:JSONDecode(d) end end end)
+local function saveHidden() pcall(function() if writefile then writefile("AMT_Hidden.json",HS:JSONEncode(Hidden)) end end) end
+local function saveSet() pcall(function() if not writefile then return end local s={} for k,v in pairs(A) do if type(v)~="function" and type(v)~="table" then s[k]=v end end writefile("AMT_Settings.json",HS:JSONEncode(s)) end) end
+pcall(function() if readfile and isfile and isfile("AMT_Settings.json") then local d=readfile("AMT_Settings.json") if d and d~="" then local s=HS:JSONDecode(d) for k,v in pairs(s) do A[k]=v end end end end)
+
+task.spawn(function() while true do task.wait(300) if A.AutoAFK then local ch=LP.Character local h=ch and ch:FindFirstChildOfClass("Humanoid") if h then pcall(function() h.Jump=true end) end pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end) end end end)
+LP.Idled:Connect(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end)
+
+local NC=nil
+local function EnNC()
+ if NC then NC:Disconnect() end
+ NC=RUN.Stepped:Connect(function() local ch=LP.Character if ch then for _,p in ipairs(ch:GetDescendants()) do if p:IsA("BasePart") and p.CanCollide then p.CanCollide=false end end end end)
 end
+EnNC()
+LP.CharacterAdded:Connect(function() task.wait(0.5) EnNC() end)
 
-MY_RANK = getRank(LocalPlayer.Name)
-MY_POWER = getPower(LocalPlayer.Name)
-IS_OWNER = MY_POWER >= 100
-IS_COOWNER = MY_POWER >= 90
-IS_SRADMIN = MY_POWER >= 70
-IS_ADMIN = MY_POWER >= 60
-IS_SRMOD = MY_POWER >= 50
-IS_MOD = MY_POWER >= 40
-IS_HELPER = MY_POWER >= 30
-IS_ELITE = MY_POWER >= 20
-IS_VIP = MY_POWER >= 10
+local killEvent=RS:FindFirstChild("Remotes") and RS.Remotes:FindFirstChild("Gameplay") and RS.Remotes.Gameplay:FindFirstChild("KillEvent")
+if not killEvent then killEvent=RS:FindFirstChild("KillEvent") end
 
-local KICKED_USERS = {}
-pcall(function()
-	if readfile and isfile and isfile(KICK_FILE) then
-		local data = readfile(KICK_FILE)
-		if data and data ~= "" then KICKED_USERS = HttpService:JSONDecode(data) end
-	end
-end)
-local function saveKicked()
-	pcall(function()
-		if writefile then writefile(KICK_FILE, HttpService:JSONEncode(KICKED_USERS)) end
-	end)
+-- FARM
+local Plat=Instance.new("Part") Plat.Name="AMT_P" Plat.Size=Vector3.new(12,1,12) Plat.Anchored=true Plat.Transparency=1 Plat.CanCollide=true Plat.Parent=WS
+local function isAlive() local ch=LP.Character if not ch then return false end local h=ch:FindFirstChildOfClass("Humanoid") if not h or h.Health<=0 then return false end return ch:FindFirstChild("HumanoidRootPart")~=nil end
+local function nearCoin(pos) local n,s=nil,math.huge for _,v in pairs(WS:GetDescendants()) do if v:IsA("BasePart") and (v.Name=="Coin_Server" or v.Name=="Coin") and not CCO[v] then local d=(v.Position-pos).Magnitude if d<s then s=d n=v end end end return n end
+local function pullAll()
+ local ch=LP.Character if not ch then return end
+ local r=ch:FindFirstChild("HumanoidRootPart") if not r then return end
+ local pos=r.Position lv=r.CFrame.LookVector rv=r.CFrame.RightVector i=0
+ for _,p in ipairs(Players:GetPlayers()) do
+  if p~=LP and p.Character then
+   local tr=p.Character:FindFirstChild("HumanoidRootPart")
+   if tr then
+    local row=math.floor(i/4) col=i%4
+    local tp=pos+(lv*(row*1.2+2))+(rv*((col-1.5)*1.2))
+    pcall(function() tr.CFrame=CFrame.new(tp,pos) tr.Anchored=true local h=p.Character:FindFirstChildOfClass("Humanoid") if h then h.WalkSpeed=0 h.JumpPower=0 h.PlatformStand=true end for _,pt in ipairs(p.Character:GetChildren()) do if pt:IsA("BasePart") then pt.Anchored=true end end end)
+    i=i+1
+   end
+  end
+ end
 end
-
-if KICKED_USERS[LocalPlayer.Name] then
-	local kd = KICKED_USERS[LocalPlayer.Name]
-	local msg = "🚫 تم طردك من السكربت\nالسبب: " .. tostring(kd.reason)
-	task.wait(0.5)
-	pcall(function() LocalPlayer:Kick(msg) end)
-	return
-end
-
--- ═══ 🎃 Colors ═══
-local C = {
-	Orange = Color3.fromRGB(255, 140, 0),
-	DarkOrange = Color3.fromRGB(200, 80, 0),
-	LightOrange = Color3.fromRGB(255, 180, 60),
-	Black = Color3.fromRGB(10, 10, 10),
-	DarkBg = Color3.fromRGB(15, 10, 5),
-	CardBg = Color3.fromRGB(25, 18, 8),
-	Red = Color3.fromRGB(255, 60, 60),
-	Green = Color3.fromRGB(80, 220, 120),
-	Yellow = Color3.fromRGB(255, 220, 60),
-}
-
--- ═══ State ═══
-_G.AMT = {
-	AutoEnabled = false, SpeedValue = 35,
-	RoundActive = false, MyRole = "Unknown",
-	CollectedCoins = 0, TargetCoins = 50,
-	ESPPlayers = false, ESPCoins = false, ESPRoles = false,
-	ESPNames = false, ESPHealth = false, ESPDistance = false,
-	ESPWeapons = false, ESPVIPTags = true,
-	AimbotMurderer = false, AimbotSmooth = 0.25,
-	KillAura = false, KillAuraRange = 15,
-	HitboxSize = 2,
-	FlyEnabled = false, AntiFling = false,
-	FullBright = false,
-	XRay = false, Invisible = false,
-	AutoGrabGun = false,
-	AutoEngageEnabled = true,
-	AutoEngageKilled = false,
-	AutoEngageKilling = false,
-	NotificationDuration = 5, ShowNotifications = true,
-}
-
-local CollectedCoinObjects = {}
-local RoleData = {}
-local CurrentTween = nil
-local ESPObjects = {}
-local HeadTags = {}
-
-LocalPlayer.Idled:Connect(function()
-	VirtualUser:CaptureController()
-	VirtualUser:ClickButton2(Vector2.new())
-end)
-
-local noClipConn = nil
-local function EnableNoclip()
-	if noClipConn then pcall(function() noClipConn:Disconnect() end) end
-	noClipConn = RunService.Stepped:Connect(function()
-		local char = LocalPlayer.Character
-		if char then
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
-			end
-		end
-	end)
-end
-EnableNoclip()
-LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5) EnableNoclip() end)
-
-local killEvent = RS:FindFirstChild("Remotes") and RS.Remotes:FindFirstChild("Gameplay") and RS.Remotes.Gameplay:FindFirstChild("KillEvent")
-if not killEvent then killEvent = RS:FindFirstChild("KillEvent") end
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🌾 FARM
--- ═══════════════════════════════════════════════════════════════════════
-local Platform = Instance.new("Part")
-Platform.Name = "AMT_UndergroundPlatform"
-Platform.Size = Vector3.new(12, 1, 12)
-Platform.Anchored = true
-Platform.Transparency = 1
-Platform.CanCollide = true
-Platform.Parent = Workspace
-
-local function IsPlayerAlive()
-	local char = LocalPlayer.Character
-	if not char then return false end
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum or hum.Health <= 0 then return false end
-	return char:FindFirstChild("HumanoidRootPart") ~= nil
-end
-
-local function GetNearestCoin(rootPos)
-	local nearest = nil
-	local shortestDist = math.huge
-	for _, v in pairs(Workspace:GetDescendants()) do
-		if v:IsA("BasePart") and (v.Name == "Coin_Server" or v.Name == "Coin") and not CollectedCoinObjects[v] then
-			local dist = (v.Position - rootPos).Magnitude
-			if dist < shortestDist then shortestDist = dist; nearest = v end
-		end
-	end
-	return nearest
-end
-
-local function pullAllPlayers()
-	local char = LocalPlayer.Character
-	if not char then return end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
-	local pos = root.Position
-	local lv = root.CFrame.LookVector
-	local rv = root.CFrame.RightVector
-	local index = 0
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer and player.Character then
-			local tRoot = player.Character:FindFirstChild("HumanoidRootPart")
-			if tRoot then
-				local row = math.floor(index / 4)
-				local col = index % 4
-				local ox = (col - 1.5) * 1.2
-				local oz = row * 1.2 + 2
-				local tPos = pos + (lv * oz) + (rv * ox)
-				pcall(function()
-					tRoot.CFrame = CFrame.new(tPos, pos)
-					tRoot.Anchored = true
-					local hum = player.Character:FindFirstChildOfClass("Humanoid")
-					if hum then hum.WalkSpeed = 0; hum.JumpPower = 0; hum.PlatformStand = true end
-					for _, part in ipairs(player.Character:GetChildren()) do
-						if part:IsA("BasePart") then part.Anchored = true end
-					end
-				end)
-				index = index + 1
-			end
-		end
-	end
-end
-
-local function equipKnife()
-	pcall(function()
-		VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-		task.wait(0.05)
-		VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-		VirtualUser:CaptureController()
-		VirtualUser:ClickButton1(Vector2.new(100, 500))
-	end)
-end
-
-local function attackAll()
-	for i = 1, 15 do
-		pcall(function()
-			VirtualUser:CaptureController()
-			VirtualUser:ClickButton1(Vector2.new(500, 500))
-		end)
-		task.wait(0.05)
-	end
-end
-
-local function killWithRemote()
-	if not killEvent then return end
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer then
-			pcall(function()
-				killEvent:FireServer(player.Name, Color3.fromRGB(255, 140, 0))
-				killEvent:FireServer(player.Name)
-			end)
-		end
-	end
-end
-
-function unfreezeAll()
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player.Character then
-			pcall(function()
-				local hum = player.Character:FindFirstChildOfClass("Humanoid")
-				if hum then hum.WalkSpeed = 16; hum.JumpPower = 50; hum.PlatformStand = false end
-				local root = player.Character:FindFirstChild("HumanoidRootPart")
-				if root then root.Anchored = false end
-				for _, part in ipairs(player.Character:GetChildren()) do
-					if part:IsA("BasePart") then part.Anchored = false end
-				end
-			end)
-		end
-	end
-end
+local function equipK() pcall(function() VIM:SendKeyEvent(true,Enum.KeyCode.One,false,game) task.wait(0.05) VIM:SendKeyEvent(false,Enum.KeyCode.One,false,game) VU:CaptureController() VU:ClickButton1(Vector2.new(100,500)) end) end
+local function atkAll() for i=1,15 do pcall(function() VU:CaptureController() VU:ClickButton1(Vector2.new(500,500)) end) task.wait(0.05) end end
+local function killRem() if not killEvent then return end for _,p in ipairs(Players:GetPlayers()) do if p~=LP then pcall(function() killEvent:FireServer(p.Name,Color3.fromRGB(255,140,0)) killEvent:FireServer(p.Name) end) end end end
+function unfreezeAll() for _,p in ipairs(Players:GetPlayers()) do if p.Character then pcall(function() local h=p.Character:FindFirstChildOfClass("Humanoid") if h then h.WalkSpeed=16 h.JumpPower=50 h.PlatformStand=false end local r=p.Character:FindFirstChild("HumanoidRootPart") if r then r.Anchored=false end for _,pt in ipairs(p.Character:GetChildren()) do if pt:IsA("BasePart") then pt.Anchored=false end end end) end end end
 
 local function farmLoop()
-	while _G.AMT.AutoEnabled do
-		task.wait(0.1)
-		if not IsPlayerAlive() then
-			if CurrentTween then CurrentTween:Cancel(); CurrentTween = nil end
-			Platform.CFrame = CFrame.new(0, 99999, 0)
-			task.wait(1)
-		elseif not _G.AMT.RoundActive then
-			if CurrentTween then CurrentTween:Cancel(); CurrentTween = nil end
-			Platform.CFrame = CFrame.new(0, 99999, 0)
-			CollectedCoinObjects = {}
-			task.wait(1)
-		else
-			local char = LocalPlayer.Character
-			local root = char and char:FindFirstChild("HumanoidRootPart")
-			if char and root then
-				local targetCoin = GetNearestCoin(root.Position)
-				if targetCoin and targetCoin.Parent then
-					local tUnder = Vector3.new(targetCoin.Position.X, targetCoin.Position.Y - 10, targetCoin.Position.Z)
-					Platform.CFrame = CFrame.new(tUnder.X, tUnder.Y - 2.5, tUnder.Z)
-					local dist = (root.Position - tUnder).Magnitude
-					local speed = _G.AMT.SpeedValue or 35
-					if speed < 5 then speed = 5 end
-					if speed > 100 then speed = 100 end
-					local tTime = dist / speed
-					CurrentTween = TweenService:Create(root, TweenInfo.new(tTime, Enum.EasingStyle.Linear), {CFrame = CFrame.new(tUnder)})
-					CurrentTween:Play()
-					while CurrentTween and CurrentTween.PlaybackState == Enum.PlaybackState.Playing do
-						task.wait()
-						if not _G.AMT.AutoEnabled or not IsPlayerAlive() or not _G.AMT.RoundActive then
-							if CurrentTween then CurrentTween:Cancel() end
-							break
-						end
-					end
-					if _G.AMT.AutoEnabled and IsPlayerAlive() and _G.AMT.RoundActive and targetCoin and targetCoin.Parent then
-						local uCF = root.CFrame
-						local upT = TweenService:Create(root, TweenInfo.new(0.2, Enum.EasingStyle.Linear), {CFrame = targetCoin.CFrame})
-						upT:Play()
-						task.wait(0.25)
-						pcall(function()
-							firetouchinterest(root, targetCoin, 0)
-							firetouchinterest(root, targetCoin, 1)
-						end)
-						CollectedCoinObjects[targetCoin] = true
-						local downT = TweenService:Create(root, TweenInfo.new(0.2, Enum.EasingStyle.Linear), {CFrame = uCF})
-						downT:Play()
-						task.wait(0.25)
-					end
-				else
-					CollectedCoinObjects = {}
-					task.wait(0.5)
-				end
-			end
-		end
-	end
+ while A.AutoEnabled do
+  task.wait(0.1)
+  if not isAlive() then
+   if CurTween then CurTween:Cancel() CurTween=nil end
+   Plat.CFrame=CFrame.new(0,99999,0)
+   task.wait(1)
+  elseif not A.RoundActive then
+   if CurTween then CurTween:Cancel() CurTween=nil end
+   Plat.CFrame=CFrame.new(0,99999,0)
+   CCO={}
+   task.wait(1)
+  else
+   local ch=LP.Character
+   local r=ch and ch:FindFirstChild("HumanoidRootPart")
+   if ch and r then
+    local tc=nearCoin(r.Position)
+    if tc and tc.Parent then
+     local tu=Vector3.new(tc.Position.X,tc.Position.Y-10,tc.Position.Z)
+     Plat.CFrame=CFrame.new(tu.X,tu.Y-2.5,tu.Z)
+     local d=(r.Position-tu).Magnitude
+     local sp=math.clamp(A.SpeedValue or 35,5,100)
+     CurTween=TS:Create(r,TweenInfo.new(d/sp,Enum.EasingStyle.Linear),{CFrame=CFrame.new(tu)})
+     CurTween:Play()
+     while CurTween and CurTween.PlaybackState==Enum.PlaybackState.Playing do
+      task.wait()
+      if not A.AutoEnabled or not isAlive() or not A.RoundActive then
+       if CurTween then CurTween:Cancel() end
+       break
+      end
+     end
+     if A.AutoEnabled and isAlive() and A.RoundActive and tc and tc.Parent then
+      local uC=r.CFrame
+      local uT=TS:Create(r,TweenInfo.new(0.2,Enum.EasingStyle.Linear),{CFrame=tc.CFrame})
+      uT:Play() task.wait(0.25)
+      pcall(function() firetouchinterest(r,tc,0) firetouchinterest(r,tc,1) end)
+      CCO[tc]=true
+      local dT=TS:Create(r,TweenInfo.new(0.2,Enum.EasingStyle.Linear),{CFrame=uC})
+      dT:Play() task.wait(0.25)
+     end
+    else
+     CCO={}
+     task.wait(0.5)
+    end
+   end
+  end
+ end
 end
 
--- ═══════════════════════════════════════════════════════════════════════
--- 🎯 AUTO ENGAGE
--- ═══════════════════════════════════════════════════════════════════════
-_G.AMT.AutoEngageKilling = false
-local _lastCoinCount = 0
-local _lastCoinTime = tick()
-
-local SafeBlock = Instance.new("Part")
-SafeBlock.Name = "AMT_SafeBlock"
-SafeBlock.Size = Vector3.new(30, 2, 30)
-SafeBlock.Anchored = true
-SafeBlock.CanCollide = true
-SafeBlock.Transparency = 0.4
-SafeBlock.Color = Color3.fromRGB(255, 140, 0)
-SafeBlock.Material = Enum.Material.Neon
-SafeBlock.Position = Vector3.new(0, 99999, 0)
-SafeBlock.Parent = Workspace
-
-local function anchorPlayer()
-	local char = LocalPlayer.Character
-	if not char then return end
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if hum then
-		hum.WalkSpeed = 0
-		hum.JumpPower = 0
-		hum.PlatformStand = false
-	end
-	hrp.Anchored = true
+local SafeB=Instance.new("Part") SafeB.Name="AMT_SB" SafeB.Size=Vector3.new(30,2,30) SafeB.Anchored=true SafeB.CanCollide=true SafeB.Transparency=0.4 SafeB.Color=Color3.fromRGB(255,140,0) SafeB.Material=Enum.Material.Neon SafeB.Position=Vector3.new(0,99999,0) SafeB.Parent=WS
+local function anchorP()
+ local ch=LP.Character if not ch then return end
+ local hrp=ch:FindFirstChild("HumanoidRootPart") if not hrp then return end
+ local h=ch:FindFirstChildOfClass("Humanoid") if h then h.WalkSpeed=0 h.JumpPower=0 h.PlatformStand=false end
+ hrp.Anchored=true
 end
-
 task.spawn(function()
-	while true do
-		task.wait(0.3)
-		pcall(function()
-			if not _G.AMT.AutoEngageEnabled then
-				_G.AMT.AutoEngageKilled = false
-				_G.AMT.AutoEngageKilling = false
-				return
-			end
-			if not _G.AMT.RoundActive then
-				_G.AMT.AutoEngageKilled = false
-				_G.AMT.AutoEngageKilling = false
-				_lastCoinCount = 0
-				_lastCoinTime = tick()
-				SafeBlock.Position = Vector3.new(0, 99999, 0)
-				return
-			end
-			if _G.AMT.MyRole ~= "Murderer" then
-				_G.AMT.AutoEngageKilling = false
-				return
-			end
-			if _G.AMT.AutoEngageKilling then
-				local char = LocalPlayer.Character
-				if not char then return end
-				local hum = char:FindFirstChildOfClass("Humanoid")
-				if not hum or hum.Health <= 0 then return end
-				local hrp = char:FindFirstChild("HumanoidRootPart")
-				if hrp and SafeBlock then hrp.CFrame = CFrame.new(SafeBlock.Position + Vector3.new(0, 5, 0)) end
-				pcall(pullAllPlayers); task.wait(0.15)
-				pcall(equipKnife); task.wait(0.1)
-				pcall(attackAll); task.wait(0.15)
-				pcall(killWithRemote); task.wait(0.15)
-				pcall(unfreezeAll)
-				return
-			end
-			local collected = _G.AMT.CollectedCoins or 0
-			local target = _G.AMT.TargetCoins or 0
-			if collected ~= _lastCoinCount then
-				_lastCoinCount = collected
-				_lastCoinTime = tick()
-			end
-			local coinsDone = false
-			if target > 0 and collected >= target then coinsDone = true end
-			if collected >= 10 and (tick() - _lastCoinTime) > 3 then coinsDone = true end
-			if not coinsDone and collected >= 5 then
-				local foundAny = false
-				for _, v in pairs(Workspace:GetDescendants()) do
-					if v:IsA("BasePart") and (v.Name == "Coin_Server" or v.Name == "Coin") then
-						foundAny = true
-						break
-					end
-				end
-				if not foundAny then coinsDone = true end
-			end
-			if not coinsDone then return end
-			_G.AMT.AutoEngageKilling = true
-			_G.AMT.AutoEngageKilled = true
-			_G.AMT.AutoEnabled = false
-			if CurrentTween then CurrentTween:Cancel(); CurrentTween = nil end
-			Platform.CFrame = CFrame.new(0, 99999, 0)
-			local char = LocalPlayer.Character
-			local hrp = char and char:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				local pos = hrp.Position
-				SafeBlock.Size = Vector3.new(40, 3, 40)
-				SafeBlock.Position = Vector3.new(pos.X, pos.Y - 4, pos.Z)
-				hrp.CFrame = CFrame.new(pos.X, pos.Y, pos.Z)
-			end
-			anchorPlayer()
-			pcall(pullAllPlayers); task.wait(0.15)
-			pcall(equipKnife); task.wait(0.1)
-			pcall(attackAll); task.wait(0.15)
-			pcall(killWithRemote); task.wait(0.15)
-			pcall(unfreezeAll)
-		end)
-	end
+ while true do
+  task.wait(0.3)
+  pcall(function()
+   if not A.AutoEngageEnabled then A.AutoEngageKilled=false A.AutoEngageKilling=false return end
+   if not A.RoundActive then A.AutoEngageKilled=false A.AutoEngageKilling=false SafeB.Position=Vector3.new(0,99999,0) return end
+   if A.MyRole~="Murderer" then A.AutoEngageKilling=false return end
+   if A.AutoEngageKilling then
+    local ch=LP.Character if not ch then return end
+    local h=ch:FindFirstChildOfClass("Humanoid") if not h or h.Health<=0 then return end
+    local hrp=ch:FindFirstChild("HumanoidRootPart")
+    if hrp and SafeB then hrp.CFrame=CFrame.new(SafeB.Position+Vector3.new(0,5,0)) end
+    pcall(pullAll) task.wait(0.15)
+    pcall(equipK) task.wait(0.1)
+    pcall(atkAll) task.wait(0.15)
+    pcall(killRem) task.wait(0.15)
+    pcall(unfreezeAll)
+    return
+   end
+   if (A.CollectedCoins or 0)<(A.MinCoinsBeforeKill or 40) then return end
+   A.AutoEngageKilling=true A.AutoEngageKilled=true A.AutoEnabled=false
+   if CurTween then CurTween:Cancel() CurTween=nil end
+   Plat.CFrame=CFrame.new(0,99999,0)
+   local ch=LP.Character local hrp=ch and ch:FindFirstChild("HumanoidRootPart")
+   if hrp then local p=hrp.Position SafeB.Size=Vector3.new(40,3,40) SafeB.Position=Vector3.new(p.X,p.Y-4,p.Z) end
+   anchorP()
+   pcall(pullAll) task.wait(0.15)
+   pcall(equipK) task.wait(0.1)
+   pcall(atkAll) task.wait(0.15)
+   pcall(killRem) task.wait(0.15)
+   pcall(unfreezeAll)
+  end)
+ end
 end)
+LP.CharacterAdded:Connect(function() task.wait(1) if not A.AutoEngageKilling then SafeB.Position=Vector3.new(0,99999,0) end end)
 
-LocalPlayer.CharacterAdded:Connect(function()
-	task.wait(1)
-	if not _G.AMT.AutoEngageKilling then
-		SafeBlock.Position = Vector3.new(0, 99999, 0)
-	end
-end)
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🏷️ HEAD TAGS
--- ═══════════════════════════════════════════════════════════════════════
-local HeadTagsGui = Instance.new("ScreenGui")
-HeadTagsGui.Name = "AMT_HeadTags"
-HeadTagsGui.ResetOnSpawn = false
-HeadTagsGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-safeParent(HeadTagsGui)
-
-local function createHeadTag(player)
-	if not player or not player.Parent then return end
-	if player == LocalPlayer then return end
-	local rank = getRank(player.Name)
-	if rank == "Member" then return end
-	if HeadTags[player] then return end
-	local rd = RANK_DATA[rank]
-	if not rd then return end
-
-	local bb = Instance.new("BillboardGui")
-	bb.Name = "AMT_Tag_" .. player.Name
-	bb.Size = UDim2.new(0, 260, 0, 44)
-	bb.StudsOffset = Vector3.new(0, 6, 0)
-	bb.AlwaysOnTop = true
-	bb.ResetOnSpawn = false
-	bb.MaxDistance = 400
-	bb.LightInfluence = 0
-	bb.Parent = HeadTagsGui
-
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(1, 0, 1, 0)
-	frame.BackgroundColor3 = Color3.fromRGB(15, 8, 3)
-	frame.BackgroundTransparency = 0.05
-	frame.BorderSizePixel = 0
-	frame.Parent = bb
-	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
-
-	local fg = Instance.new("UIGradient", frame)
-	fg.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 15, 5)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 30, 10)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 50, 15)),
-	})
-	fg.Rotation = 45
-
-	local stroke = Instance.new("UIStroke", frame)
-	stroke.Color = rd.color
-	stroke.Thickness = 3
-	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-	local sg = Instance.new("UIGradient", stroke)
-	sg.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, rd.gradient[1]),
-		ColorSequenceKeypoint.new(0.5, rd.gradient[2]),
-		ColorSequenceKeypoint.new(1, rd.gradient[1]),
-	})
-	sg.Rotation = 45
-
-	local icon = Instance.new("TextLabel")
-	icon.Size = UDim2.new(0, 34, 1, 0)
-	icon.Position = UDim2.new(0, 4, 0, 0)
-	icon.BackgroundTransparency = 1
-	icon.Text = rd.emoji
-	icon.TextSize = 24
-	icon.Font = Enum.Font.GothamBold
-	icon.Parent = frame
-
-	local tagText = Instance.new("TextLabel")
-	tagText.Size = UDim2.new(1, -42, 1, 0)
-	tagText.Position = UDim2.new(0, 40, 0, 0)
-	tagText.BackgroundTransparency = 1
-	tagText.Text = rank .. " | " .. (player.DisplayName or player.Name)
-	tagText.TextColor3 = rd.color
-	tagText.TextSize = 15
-	tagText.Font = Enum.Font.GothamBold
-	tagText.TextXAlignment = Enum.TextXAlignment.Left
-	tagText.TextStrokeTransparency = 0
-	tagText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-	tagText.Parent = frame
-
-	local tg = Instance.new("UIGradient", tagText)
-	tg.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, rd.gradient[1]),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 220, 150)),
-		ColorSequenceKeypoint.new(1, rd.gradient[2]),
-	})
-
-	task.spawn(function()
-		while frame and frame.Parent do
-			task.wait(0.04)
-			sg.Rotation = (tick() * 120) % 360
-			local pulse = 0.6 + math.sin(tick() * 3) * 0.4
-			stroke.Thickness = 2 + pulse
-		end
-	end)
-
-	task.spawn(function()
-		local base = Vector3.new(0, 6, 0)
-		while frame and frame.Parent do
-			task.wait(0.05)
-			bb.StudsOffset = base + Vector3.new(0, math.sin(tick() * 2) * 0.4, 0)
-		end
-	end)
-
-	HeadTags[player] = bb
+-- HEAD TAGS
+local HTG=Instance.new("ScreenGui") HTG.Name="AMT_HT" HTG.ResetOnSpawn=false HTG.ZIndexBehavior=Enum.ZIndexBehavior.Sibling HTG.IgnoreGuiInset=true safeParent(HTG)
+local function createHT(p)
+ if not p or p==LP then return end
+ if HeadTags[p] then return end
+ local r=getRank(p.Name) local rd=RD[r] or RD.Member
+ local bb=Instance.new("BillboardGui")
+ bb.Size=UDim2.new(0,240,0,42) bb.StudsOffset=Vector3.new(0,5.5,0) bb.AlwaysOnTop=true bb.ResetOnSpawn=false bb.MaxDistance=400 bb.LightInfluence=0 bb.Parent=HTG
+ local f=Instance.new("Frame") f.Size=UDim2.new(1,0,1,0) f.BackgroundColor3=Color3.fromRGB(20,12,5) f.BackgroundTransparency=0.05 f.BorderSizePixel=0 f.Parent=bb
+ Instance.new("UICorner",f).CornerRadius=UDim.new(0,10)
+ local fg=Instance.new("UIGradient",f) fg.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(35,18,6)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(70,35,12)),ColorSequenceKeypoint.new(1,Color3.fromRGB(110,55,18))}) fg.Rotation=45
+ local st=Instance.new("UIStroke",f) st.Color=rd.c st.Thickness=2.5
+ local ic=Instance.new("TextLabel") ic.Size=UDim2.new(0,34,1,0) ic.Position=UDim2.new(0,4,0,0) ic.BackgroundTransparency=1 ic.Text=rd.e ic.TextSize=22 ic.Font=Enum.Font.GothamBold ic.Parent=f
+ local tt=Instance.new("TextLabel") tt.Size=UDim2.new(1,-42,1,0) tt.Position=UDim2.new(0,38,0,0) tt.BackgroundTransparency=1 tt.Text=r.." | "..(p.DisplayName or p.Name) tt.TextColor3=rd.c tt.TextSize=14 tt.Font=Enum.Font.GothamBold tt.TextXAlignment=Enum.TextXAlignment.Left tt.TextStrokeTransparency=0 tt.TextStrokeColor3=Color3.fromRGB(0,0,0) tt.Parent=f
+ HeadTags[p]=bb
 end
-
-local function removeHeadTag(p)
-	if HeadTags[p] then
-		pcall(function() HeadTags[p]:Destroy() end)
-		HeadTags[p] = nil
-	end
+local function removeHT(p) if HeadTags[p] then pcall(function() HeadTags[p]:Destroy() end) HeadTags[p]=nil end end
+local function refreshHT()
+ for _,p in ipairs(Players:GetPlayers()) do
+  if p~=LP then
+   if not HeadTags[p] then createHT(p) end
+   local bb=HeadTags[p]
+   if bb then
+    if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then bb.Adornee=p.Character.HumanoidRootPart bb.Enabled=A.ESPVIPTags
+    else bb.Enabled=false end
+   end
+  end
+ end
 end
+task.spawn(function() while true do task.wait(1) refreshHT() end end)
+Players.PlayerAdded:Connect(function(p) task.wait(1.5) refreshHT() end)
+Players.PlayerRemoving:Connect(function(p) removeHT(p) end)
+refreshHT()
 
-local function refreshHeadTags()
-	for _, p in ipairs(Players:GetPlayers()) do
-		local r = getRank(p.Name)
-		if r ~= "Member" and p ~= LocalPlayer then
-			if not HeadTags[p] then createHeadTag(p) end
-		else
-			removeHeadTag(p)
-		end
-	end
+-- CHAT SYNC
+local SyncC=nil
+pcall(function() if TCS.ChatVersion==Enum.ChatVersion.TextChatService then SyncC=TCS.TextChannels:FindFirstChild("RBXGeneral") end end)
+local function toHex(s) return (s:gsub(".",function(c) return string.format("%02x",c:byte()) end)) end
+local function fromHex(h) return (h:gsub("%x%x",function(c) return string.char(tonumber(c,16)) end)) end
+local HP="414d5453594e43"
+local function bcast(m) pcall(function() local e=HP..toHex(m) if SyncC then SyncC:SendAsync(e) else game:GetService("Chat"):Chat(LP.Character,e) end end) end
+local function handleSync(m)
+ if not m or type(m)~="string" then return end
+ if m:sub(1,#HP)==HP then local o,d=pcall(function() return fromHex(m:sub(#HP+1)) end) if not o or not d then return end m=d end
+ if m:sub(1,10)=="AMT_RANK::" then
+  local t,r=m:match("^AMT_RANK::([^:]+)::(.+)$")
+  if t and r and RD[r] then RANKS[t]=r saveRanks() local p=Players:FindFirstChild(t) if p then removeHT(p) task.wait(0.1) createHT(p) end if t==LP.Name then updRank(r) notify("🎃 رتبتك تغيرت","رتبتك: "..r,"success") end end
+ end
+ if m:sub(1,10)=="AMT_KICK::" then
+  local t,r=m:match("^AMT_KICK::([^:]+)::(.+)$")
+  if t and t==LP.Name then KICKED[t]={reason=r or "من الإدارة"} saveKicked() pcall(function() LP:Kick("🎃 تم طردك\n"..(r or "")) end) end
+ end
+ if m:sub(1,12)=="AMT_UNKICK::" then
+  local t=m:match("^AMT_UNKICK::(.+)$")
+  if t then KICKED[t]=nil saveKicked() if t==LP.Name then notify("✅","تم إلغاء طردك","success") end end
+ end
 end
+local function hookPC(p) p.Chatted:Connect(function(m) task.spawn(handleSync,m) end) end
+for _,p in ipairs(Players:GetPlayers()) do hookPC(p) end
+Players.PlayerAdded:Connect(hookPC)
 
+-- ROLE DETECT
+local function applyRole(n,i) if not n then return end RoleData[n]=i or {Role="Innocent"} if n==LP.Name then A.MyRole=(i and i.Role) or "Innocent" end end
+local function detectR(p)
+ local ch=p.Character if not ch then return nil end
+ local t=ch:FindFirstChildOfClass("Tool") if not t then return nil end
+ local n=t.Name:lower()
+ if n:find("knife") or n:find("sword") or n:find("blade") then return "Murderer" end
+ if n:find("gun") or n:find("revolver") or n:find("pistol") then return "Sheriff" end
+end
 task.spawn(function()
-	while true do
-		task.wait(1)
-		refreshHeadTags()
-		for p, bb in pairs(HeadTags) do
-			if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-				bb.Adornee = p.Character.HumanoidRootPart
-				bb.Enabled = _G.AMT.ESPVIPTags
-			else
-				bb.Enabled = false
-			end
-		end
-	end
+ while true do
+  task.wait(0.5)
+  pcall(function()
+   for _,p in ipairs(Players:GetPlayers()) do
+    if p~=LP then
+     local ex=RoleData[p.Name]
+     if not ex or not ex.Role or ex.Role=="Unknown" then
+      local r=detectR(p)
+      if r then RoleData[p.Name]={Role=r}
+      elseif A.RoundActive then RoleData[p.Name]={Role="Innocent"} end
+     end
+    end
+   end
+   if A.RoundActive then
+    local mc=LP.Character
+    if mc then
+     local mt=mc:FindFirstChildOfClass("Tool")
+     if mt then local n=mt.Name:lower() if n:find("knife") or n:find("sword") then A.MyRole="Murderer" elseif n:find("gun") or n:find("revolver") then A.MyRole="Sheriff" end end
+    end
+   end
+  end)
+ end
 end)
 
-Players.PlayerAdded:Connect(function(p) task.wait(1.5) refreshHeadTags() end)
-Players.PlayerRemoving:Connect(function(p) removeHeadTag(p) end)
-refreshHeadTags()
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🔄 CHAT SYNC (Hex Encoded)
--- ═══════════════════════════════════════════════════════════════════════
-local SyncChannel = nil
-pcall(function()
-	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-		SyncChannel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-	end
-end)
-
-local function toHex(str)
-	return (str:gsub(".", function(c) return string.format("%02x", c:byte()) end))
+-- ESP
+local ESPFolder=Instance.new("Folder") ESPFolder.Name="AMT_ESPFolder" ESPFolder.Parent=WS
+local EG=Instance.new("ScreenGui") EG.Name="AMT_EG" EG.ResetOnSpawn=false EG.ZIndexBehavior=Enum.ZIndexBehavior.Sibling safeParent(EG)
+local function getRole(p) if RoleData[p.Name] and RoleData[p.Name].Role then return RoleData[p.Name].Role end end
+local function roleCol(r) if r=="Murderer" then return Color3.fromRGB(255,60,60) elseif r=="Sheriff" then return Color3.fromRGB(0,200,255) elseif r=="Innocent" then return Color3.fromRGB(80,220,120) end return Color3.fromRGB(180,180,180) end
+local function createESP(p)
+ if p==LP or ESPObj[p] then return end
+ local h=Instance.new("Highlight") h.FillColor=Color3.fromRGB(200,200,200) h.FillTransparency=0.5 h.OutlineColor=Color3.fromRGB(255,255,255) h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop h.Adornee=p.Character h.Parent=ESPFolder
+ local bb=Instance.new("BillboardGui") bb.Size=UDim2.new(0,220,0,50) bb.StudsOffset=Vector3.new(0,3.5,0) bb.AlwaysOnTop=true bb.ResetOnSpawn=false bb.MaxDistance=500 bb.Parent=EG
+ local nl=Instance.new("TextLabel") nl.Size=UDim2.new(1,0,0,16) nl.BackgroundTransparency=1 nl.TextColor3=Color3.fromRGB(255,255,255) nl.TextStrokeTransparency=0 nl.TextStrokeColor3=Color3.fromRGB(0,0,0) nl.TextSize=14 nl.Font=Enum.Font.GothamBold nl.Parent=bb
+ local il=Instance.new("TextLabel") il.Size=UDim2.new(1,0,0,14) il.Position=UDim2.new(0,0,0,16) il.BackgroundTransparency=1 il.TextColor3=Color3.fromRGB(255,255,255) il.TextStrokeTransparency=0 il.TextStrokeColor3=Color3.fromRGB(0,0,0) il.TextSize=11 il.Font=Enum.Font.Gotham il.Parent=bb
+ ESPObj[p]={h=h,b=bb,n=nl,i=il}
+ p.CharacterAdded:Connect(function(ch) task.wait(0.3) if ESPObj[p] then ESPObj[p].h.Adornee=ch local hrp=ch:FindFirstChild("HumanoidRootPart") if hrp then ESPObj[p].b.Adornee=hrp end end end)
 end
-
-local function fromHex(hex)
-	return (hex:gsub("%x%x", function(cc) return string.char(tonumber(cc, 16)) end))
-end
-
-local HEX_PREFIX = "414d5453594e43"
-
-local function broadcastSync(msg)
-	pcall(function()
-		local encoded = HEX_PREFIX .. toHex(msg)
-		if SyncChannel then
-			SyncChannel:SendAsync(encoded)
-		else
-			game:GetService("Chat"):Chat(LocalPlayer.Character, encoded)
-		end
-	end)
-end
-
-local function handleSyncMessage(msg)
-	if not msg or type(msg) ~= "string" then return end
-	if msg:sub(1, #HEX_PREFIX) == HEX_PREFIX then
-		local okDec, decoded = pcall(function() return fromHex(msg:sub(#HEX_PREFIX + 1)) end)
-		if not okDec or not decoded then return end
-		msg = decoded
-	end
-
-	if msg:sub(1, 10) == "AMT_RANK::" then
-		local target, rank = msg:match("^AMT_RANK::([^:]+)::(.+)$")
-		if target and rank and RANK_DATA[rank] then
-			RANKS[target] = rank
-			saveRanks()
-			local t = Players:FindFirstChild(target)
-			if t then
-				removeHeadTag(t)
-				task.wait(0.1)
-				createHeadTag(t)
-			end
-			if target == LocalPlayer.Name then
-				updateMyRankVars(rank)
-				notify("🎃 رتبتك تغيرت", "رتبتك الجديدة: " .. rank)
-			end
-		end
-	end
-
-	if msg:sub(1, 10) == "AMT_KICK::" then
-		local target, reason = msg:match("^AMT_KICK::([^:]+)::(.+)$")
-		if target and target == LocalPlayer.Name then
-			KICKED_USERS[target] = {reason = reason or "من الإدارة", by = "Sync"}
-			saveKicked()
-			pcall(function() LocalPlayer:Kick("🎃 تم طردك\nالسبب: " .. (reason or "من الإدارة")) end)
-		end
-	end
-
-	if msg:sub(1, 12) == "AMT_UNKICK::" then
-		local target = msg:match("^AMT_UNKICK::(.+)$")
-		if target then
-			KICKED_USERS[target] = nil
-			saveKicked()
-			if target == LocalPlayer.Name then
-				notify("✅ تم إلغاء طردك", "تقدر تستخدم السكربت الحين")
-			end
-		end
-	end
-end
-
-local function hookPlayerChat(p)
-	p.Chatted:Connect(function(msg) task.spawn(handleSyncMessage, msg) end)
-end
-for _, p in ipairs(Players:GetPlayers()) do hookPlayerChat(p) end
-Players.PlayerAdded:Connect(hookPlayerChat)
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🎭 ROLE DETECTION
--- ═══════════════════════════════════════════════════════════════════════
-local function applyRoleFromData(name, info)
-	if not name then return end
-	RoleData[name] = info or {Role = "Innocent"}
-	if name == LocalPlayer.Name then
-		_G.AMT.MyRole = (info and info.Role) or "Innocent"
-	end
-end
-
-local function detectRoleFromTools(player)
-	local char = player.Character
-	if not char then return nil end
-	local tool = char:FindFirstChildOfClass("Tool")
-	if not tool then return nil end
-	local n = tool.Name:lower()
-	if n:find("knife") or n:find("sword") or n:find("blade") then return "Murderer" end
-	if n:find("gun") or n:find("revolver") or n:find("pistol") then return "Sheriff" end
-	return nil
-end
-
-task.spawn(function()
-	while true do
-		task.wait(0.5)
-		pcall(function()
-			for _, p in ipairs(Players:GetPlayers()) do
-				if p ~= LocalPlayer then
-					local existing = RoleData[p.Name]
-					if not existing or not existing.Role or existing.Role == "Unknown" then
-						local role = detectRoleFromTools(p)
-						if role then
-							RoleData[p.Name] = {Role = role}
-						elseif _G.AMT.RoundActive then
-							RoleData[p.Name] = {Role = "Innocent"}
-						end
-					end
-				end
-			end
-			if _G.AMT.RoundActive then
-				local myChar = LocalPlayer.Character
-				if myChar then
-					local myTool = myChar:FindFirstChildOfClass("Tool")
-					if myTool then
-						local n = myTool.Name:lower()
-						if n:find("knife") or n:find("sword") then _G.AMT.MyRole = "Murderer"
-						elseif n:find("gun") or n:find("revolver") then _G.AMT.MyRole = "Sheriff" end
-					end
-				end
-			end
-		end)
-	end
-end)
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🎯 ESP SYSTEM
--- ═══════════════════════════════════════════════════════════════════════
-local ESPGui = Instance.new("ScreenGui")
-ESPGui.Name = "AMT_ESP"
-ESPGui.ResetOnSpawn = false
-ESPGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-safeParent(ESPGui)
-
-local function getRole(p)
-	if RoleData[p.Name] and RoleData[p.Name].Role then return RoleData[p.Name].Role end
-	return nil
-end
-
-local function getRoleColor(role)
-	if role == "Murderer" then return Color3.fromRGB(255, 60, 60)
-	elseif role == "Sheriff" then return Color3.fromRGB(0, 200, 255)
-	elseif role == "Innocent" then return Color3.fromRGB(80, 220, 120)
-	else return Color3.fromRGB(180, 180, 180) end
-end
-
-local function createESP(player)
-	if player == LocalPlayer then return end
-	if ESPObjects[player] then return end
-
-	local hl = Instance.new("Highlight")
-	hl.FillColor = Color3.fromRGB(200, 200, 200)
-	hl.FillTransparency = 0.5
-	hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-	hl.OutlineTransparency = 0
-	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	hl.Adornee = nil
-	hl.Parent = ESPGui
-
-	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.new(0, 220, 0, 50)
-	bb.StudsOffset = Vector3.new(0, 3.5, 0)
-	bb.AlwaysOnTop = true
-	bb.ResetOnSpawn = false
-	bb.MaxDistance = 500
-	bb.Parent = ESPGui
-
-	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(1, 0, 0, 16)
-	nameLbl.BackgroundTransparency = 1
-	nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-	nameLbl.TextStrokeTransparency = 0
-	nameLbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-	nameLbl.TextSize = 14
-	nameLbl.Font = Enum.Font.GothamBold
-	nameLbl.Parent = bb
-
-	local infoLbl = Instance.new("TextLabel")
-	infoLbl.Size = UDim2.new(1, 0, 0, 14)
-	infoLbl.Position = UDim2.new(0, 0, 0, 16)
-	infoLbl.BackgroundTransparency = 1
-	infoLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-	infoLbl.TextStrokeTransparency = 0
-	infoLbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-	infoLbl.TextSize = 11
-	infoLbl.Font = Enum.Font.Gotham
-	infoLbl.Parent = bb
-
-	ESPObjects[player] = {highlight = hl, billboard = bb, nameLabel = nameLbl, infoLabel = infoLbl}
-end
-
-local function removeESP(player)
-	if ESPObjects[player] then
-		pcall(function()
-			if ESPObjects[player].highlight then ESPObjects[player].highlight:Destroy() end
-			if ESPObjects[player].billboard then ESPObjects[player].billboard:Destroy() end
-		end)
-		ESPObjects[player] = nil
-	end
-end
-
+local function removeESP(p) if ESPObj[p] then pcall(function() ESPObj[p].h:Destroy() ESPObj[p].b:Destroy() end) ESPObj[p]=nil end end
 local function updateESP()
-	for player, obj in pairs(ESPObjects) do
-		if not player.Parent then
-			removeESP(player)
-			continue
-		end
-		local char = player.Character
-		if char and char:FindFirstChild("HumanoidRootPart") then
-			local hrp = char:FindFirstChild("HumanoidRootPart")
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			local role = getRole(player)
-
-			if _G.AMT.ESPPlayers then
-				obj.highlight.Adornee = char
-				obj.highlight.Enabled = true
-				if _G.AMT.ESPRoles and role then
-					local rc = getRoleColor(role)
-					obj.highlight.FillColor = rc
-					obj.highlight.OutlineColor = rc
-				else
-					obj.highlight.FillColor = Color3.fromRGB(200, 200, 200)
-					obj.highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-				end
-			else
-				obj.highlight.Adornee = nil
-				obj.highlight.Enabled = false
-			end
-
-			if _G.AMT.ESPPlayers and hrp then
-				obj.billboard.Adornee = hrp
-				obj.billboard.Enabled = true
-
-				if _G.AMT.ESPNames then
-					local rt = ""
-					if _G.AMT.ESPRoles and role then
-						if role == "Murderer" then rt = "🔪 "
-						elseif role == "Sheriff" then rt = "🔫 "
-						elseif role == "Innocent" then rt = "👤 "
-						else rt = "❔ " end
-					end
-					obj.nameLabel.Text = rt .. player.Name
-					obj.nameLabel.TextColor3 = (_G.AMT.ESPRoles and role) and getRoleColor(role) or Color3.fromRGB(255, 255, 255)
-					obj.nameLabel.Visible = true
-				else
-					obj.nameLabel.Visible = false
-				end
-
-				local info = {}
-				if _G.AMT.ESPHealth and hum then table.insert(info, "❤️ " .. math.floor(hum.Health)) end
-				if _G.AMT.ESPDistance and hrp then
-					local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-					if myHrp then table.insert(info, "📏 " .. math.floor((hrp.Position - myHrp.Position).Magnitude)) end
-				end
-				if _G.AMT.ESPWeapons then
-					local tool = char:FindFirstChildOfClass("Tool")
-					if tool then table.insert(info, "🔧 " .. tool.Name) end
-				end
-				obj.infoLabel.Text = table.concat(info, " | ")
-				obj.infoLabel.Visible = #info > 0
-			else
-				obj.billboard.Enabled = false
-			end
-		else
-			if obj.highlight then obj.highlight.Adornee = nil; obj.highlight.Enabled = false end
-			if obj.billboard then obj.billboard.Enabled = false end
-		end
-	end
+ for p,o in pairs(ESPObj) do
+  if not p.Parent then removeESP(p) continue end
+  local ch=p.Character
+  if ch then
+   local hrp=ch:FindFirstChild("HumanoidRootPart")
+   local hum=ch:FindFirstChildOfClass("Humanoid")
+   local role=getRole(p)
+   if A.ESPPlayers and hrp then
+    o.h.Adornee=ch o.h.Enabled=true
+    if A.ESPRoles and role then local rc=roleCol(role) o.h.FillColor=rc o.h.OutlineColor=rc
+    else o.h.FillColor=Color3.fromRGB(200,200,200) o.h.OutlineColor=Color3.fromRGB(255,255,255) end
+    o.b.Adornee=hrp o.b.Enabled=true
+    if A.ESPNames then
+     local rt=""
+     if A.ESPRoles and role then if role=="Murderer" then rt="🔪 " elseif role=="Sheriff" then rt="🔫 " elseif role=="Innocent" then rt="👤 " else rt="❔ " end end
+     o.n.Text=rt..p.Name o.n.TextColor3=(A.ESPRoles and role) and roleCol(role) or Color3.fromRGB(255,255,255) o.n.Visible=true
+    else o.n.Visible=false end
+    local info={}
+    if A.ESPHealth and hum then table.insert(info,"❤️ "..math.floor(hum.Health)) end
+    if A.ESPDistance and hrp then local mh=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") if mh then table.insert(info,"📏 "..math.floor((hrp.Position-mh.Position).Magnitude)) end end
+    if A.ESPWeapons then local t=ch:FindFirstChildOfClass("Tool") if t then table.insert(info,"🔧 "..t.Name) end end
+    o.i.Text=table.concat(info," | ") o.i.Visible=#info>0
+   else
+    o.h.Adornee=nil o.h.Enabled=false o.b.Enabled=false
+   end
+  else
+   o.h.Adornee=nil o.h.Enabled=false o.b.Enabled=false
+  end
+ end
 end
+Players.PlayerAdded:Connect(function(p) task.wait(0.5) if A.ESPPlayers then createESP(p) end end)
+task.spawn(function() while true do task.wait(0.1) pcall(updateESP) end end)
 
+local CE={}
+local function isCoin(o) if not o or not o:IsA("BasePart") then return false end local n=o.Name return n=="Coin_Server" or n=="Coin" or n=="Coin_Client" or n:lower():find("coin")~=nil end
 task.spawn(function()
-	while true do
-		task.wait(0.1)
-		pcall(updateESP)
-	end
+ while true do
+  task.wait(0.5)
+  pcall(function()
+   if not A.ESPCoins then for _,o in pairs(CE) do pcall(function() o:Destroy() end) end CE={}
+   else
+    for _,v in pairs(WS:GetDescendants()) do
+     if isCoin(v) and not CE[v] then
+      local h=Instance.new("Highlight") h.FillColor=Color3.fromRGB(255,220,60) h.FillTransparency=0.3 h.OutlineColor=Color3.fromRGB(255,220,60) h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop h.Adornee=v h.Parent=ESPFolder
+      CE[v]=h
+     end
+    end
+    for k,o in pairs(CE) do if typeof(k)=="Instance" then if not k or not k.Parent then pcall(function() o:Destroy() end) CE[k]=nil end end end
+   end
+  end)
+ end
 end)
 
-local CoinESPObjects = {}
-local function isCoin(obj)
-	if not obj or not obj:IsA("BasePart") then return false end
-	local n = obj.Name
-	return n == "Coin_Server" or n == "Coin" or n == "Coin_Client" or n:lower():find("coin") ~= nil
+-- COMBAT
+local function getMurderer()
+ for n,i in pairs(RoleData) do
+  if i.Role=="Murderer" then local p=Players:FindFirstChild(n) if p and p.Character and p~=LP then local h=p.Character:FindFirstChildOfClass("Humanoid") if h and h.Health>0 then return p end end end
+ end
 end
-
-local function updateCoinESP()
-	if not _G.AMT.ESPCoins then
-		for _, o in pairs(CoinESPObjects) do pcall(function() o:Destroy() end) end
-		CoinESPObjects = {}
-		return
-	end
-	for _, v in pairs(Workspace:GetDescendants()) do
-		if isCoin(v) and not CoinESPObjects[v] then
-			local hl = Instance.new("Highlight")
-			hl.FillColor = Color3.fromRGB(255, 220, 60)
-			hl.FillTransparency = 0.3
-			hl.OutlineColor = Color3.fromRGB(255, 220, 60)
-			hl.OutlineTransparency = 0
-			hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-			hl.Adornee = v
-			hl.Parent = ESPGui
-
-			local bb = Instance.new("BillboardGui")
-			bb.Size = UDim2.new(0, 80, 0, 20)
-			bb.StudsOffset = Vector3.new(0, 1.5, 0)
-			bb.AlwaysOnTop = true
-			bb.MaxDistance = 500
-			bb.Adornee = v
-			bb.Parent = ESPGui
-
-			local lbl = Instance.new("TextLabel")
-			lbl.Size = UDim2.new(1, 0, 1, 0)
-			lbl.BackgroundTransparency = 1
-			lbl.Text = "💰"
-			lbl.TextColor3 = Color3.fromRGB(255, 220, 60)
-			lbl.TextStrokeTransparency = 0
-			lbl.TextSize = 14
-			lbl.Font = Enum.Font.GothamBold
-			lbl.Parent = bb
-
-			CoinESPObjects[v] = hl
-			CoinESPObjects["bb_" .. tostring(v)] = bb
-		end
-	end
-	for k, obj in pairs(CoinESPObjects) do
-		if typeof(k) == "Instance" then
-			if not k or not k.Parent then
-				pcall(function() obj:Destroy() end)
-				CoinESPObjects[k] = nil
-			end
-		end
-	end
-end
-
+task.spawn(function() while true do task.wait(0.02) if A.AimbotMurderer then local m=getMurderer() if m and m.Character then local h=m.Character:FindFirstChild("HumanoidRootPart") if h then local cam=workspace.CurrentCamera local t=CFrame.new(cam.CFrame.Position,h.Position) cam.CFrame=cam.CFrame:Lerp(t,1-(A.AimbotSmooth or 0.25)) pcall(function() VU:CaptureController() VU:ClickButton1(Vector2.new(500,500)) end) end end end end end)
 task.spawn(function()
-	while true do
-		task.wait(0.5)
-		pcall(updateCoinESP)
-	end
+ while true do
+  task.wait(0.15)
+  if A.KillAura then
+   local ch=LP.Character local mh=ch and ch:FindFirstChild("HumanoidRootPart")
+   if mh then
+    local rg=A.KillAuraRange or 15
+    local mt=ch:FindFirstChildOfClass("Tool")
+    if not mt then pcall(equipK) end
+    local targets={}
+    for _,p in ipairs(Players:GetPlayers()) do
+     if p~=LP and p.Character then
+      local h=p.Character:FindFirstChild("HumanoidRootPart")
+      local hu=p.Character:FindFirstChildOfClass("Humanoid")
+      if h and hu and hu.Health>0 and (h.Position-mh.Position).Magnitude<=rg then table.insert(targets,p) end
+     end
+    end
+    if #targets>0 then
+     if killEvent then for _,p in ipairs(targets) do pcall(function() killEvent:FireServer(p.Name) end) end end
+     pcall(function() VU:CaptureController() VU:ClickButton1(Vector2.new(500,500)) end)
+     if A.MyRole=="Murderer" then pcall(pullAll) task.wait(0.05) pcall(atkAll) task.wait(0.05) pcall(killRem) pcall(unfreezeAll) end
+    end
+   end
+  end
+ end
 end)
+local function findGun() for _,o in pairs(WS:GetDescendants()) do if o:IsA("BasePart") and (o.Name=="GunDrop" or o.Name=="Gun") then return o end end end
+task.spawn(function() while true do task.wait(0.1) if A.AutoGrabGun then local ch=LP.Character if ch then local h=ch:FindFirstChildOfClass("Humanoid") if h and h.Health>0 then local bp=LP:FindFirstChildOfClass("Backpack") local hg=(ch:FindFirstChild("Gun") or (bp and bp:FindFirstChild("Gun"))) if not hg then local g=findGun() if g then local hrp=ch:FindFirstChild("HumanoidRootPart") if hrp then local op=hrp.CFrame hrp.CFrame=g.CFrame task.wait(0.05) pcall(function() firetouchinterest(hrp,g,0) firetouchinterest(hrp,g,1) end) task.wait(0.05) hrp.CFrame=op end end end end end end end end)
 
--- ═══════════════════════════════════════════════════════════════════════
--- ⚔️ COMBAT HELPERS
--- ═══════════════════════════════════════════════════════════════════════
-local function GetMurdererPlayer()
-	for name, info in pairs(RoleData) do
-		if info.Role == "Murderer" then
-			local p = Players:FindFirstChild(name)
-			if p and p.Character and p ~= LocalPlayer then
-				local hum = p.Character:FindFirstChildOfClass("Humanoid")
-				if hum and hum.Health > 0 then return p end
-			end
-		end
-	end
-	return nil
+-- FLY
+local flyConn=nil local flyGui=nil
+local function toggleFly(s)
+ A.FlyEnabled=s
+ local ch=LP.Character if not ch then return end
+ local hrp=ch:FindFirstChild("HumanoidRootPart") if not hrp then return end
+ if s then
+  local bg=Instance.new("BodyGyro") bg.P=9e4 bg.MaxTorque=Vector3.new(9e9,9e9,9e9) bg.CFrame=hrp.CFrame bg.Parent=hrp
+  local bv=Instance.new("BodyVelocity") bv.Velocity=Vector3.new(0,0,0) bv.MaxForce=Vector3.new(9e9,9e9,9e9) bv.Parent=hrp
+  flyConn=RUN.Heartbeat:Connect(function()
+   if not hrp or not hrp.Parent then return end
+   local cam=workspace.CurrentCamera
+   local md=Vector3.new()
+   if UIS:IsKeyDown(Enum.KeyCode.W) then md=md+cam.CFrame.LookVector end
+   if UIS:IsKeyDown(Enum.KeyCode.S) then md=md-cam.CFrame.LookVector end
+   if UIS:IsKeyDown(Enum.KeyCode.A) then md=md-cam.CFrame.RightVector end
+   if UIS:IsKeyDown(Enum.KeyCode.D) then md=md+cam.CFrame.RightVector end
+   if UIS:IsKeyDown(Enum.KeyCode.Space) then md=md+Vector3.new(0,1,0) end
+   if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then md=md-Vector3.new(0,1,0) end
+   bv.Velocity=md.Magnitude>0 and md.Unit*80 or Vector3.new(0,0,0)
+   bg.CFrame=cam.CFrame
+  end)
+ else
+  if flyConn then flyConn:Disconnect() flyConn=nil end
+  for _,o in ipairs(hrp:GetChildren()) do if o:IsA("BodyVelocity") or o:IsA("BodyGyro") then o:Destroy() end end
+ end
+end
+local function mkFlyBtn(pos,sym,dir)
+ local b=Instance.new("TextButton") b.Size=UDim2.new(0,55,0,55) b.Position=pos b.BackgroundColor3=Color3.fromRGB(255,140,0) b.BackgroundTransparency=0.3 b.Text=sym b.TextColor3=Color3.fromRGB(255,255,255) b.TextSize=22 b.Font=Enum.Font.GothamBold b.BorderSizePixel=0 b.Parent=flyGui
+ Instance.new("UICorner",b).CornerRadius=UDim.new(0,12)
+ local st=Instance.new("UIStroke",b) st.Color=Color3.fromRGB(255,200,100) st.Thickness=1.5
+ b.MouseButton1Down:Connect(function() A._fd=dir end)
+ b.MouseButton1Up:Connect(function() A._fd=Vector3.new(0,0,0) end)
+ b.MouseLeave:Connect(function() A._fd=Vector3.new(0,0,0) end)
+end
+local function createFlyCtl()
+ if flyGui then flyGui:Destroy() end
+ flyGui=Instance.new("ScreenGui") flyGui.Name="AMT_FlyC" flyGui.ResetOnSpawn=false safeParent(flyGui)
+ A._fd=Vector3.new(0,0,0)
+ mkFlyBtn(UDim2.new(1,-180,1,-240),"⬆️",Vector3.new(0,1,0))
+ mkFlyBtn(UDim2.new(1,-180,1,-170),"⬇️",Vector3.new(0,-1,0))
+ mkFlyBtn(UDim2.new(1,-110,1,-170),"🔺",Vector3.new(0,0,-1))
+ mkFlyBtn(UDim2.new(1,-250,1,-170),"🔻",Vector3.new(0,0,1))
+ mkFlyBtn(UDim2.new(1,-250,1,-240),"◀️",Vector3.new(-1,0,0))
+ mkFlyBtn(UDim2.new(1,-110,1,-240),"▶️",Vector3.new(1,0,0))
+ RUN.Heartbeat:Connect(function()
+  if not A.FlyEnabled then return end
+  local ch=LP.Character if not ch then return end
+  local hrp=ch:FindFirstChild("HumanoidRootPart") if not hrp then return end
+  local bv=hrp:FindFirstChildOfClass("BodyVelocity") if not bv then return end
+  if A._fd and A._fd.Magnitude>0 then bv.Velocity=A._fd.Unit*80 else bv.Velocity=Vector3.new(0,0,0) end
+ end)
+end
+local function destroyFlyCtl() if flyGui then flyGui:Destroy() flyGui=nil end end
+
+local function setFB(s)
+ if s then LT.Brightness=3 LT.ClockTime=14 LT.Ambient=Color3.fromRGB(180,130,80) LT.OutdoorAmbient=Color3.fromRGB(200,150,90) LT.FogEnd=100000
+ else LT.Brightness=2 LT.Ambient=Color3.fromRGB(70,50,30) LT.OutdoorAmbient=Color3.fromRGB(128,90,50) end
+end
+local function setFPS(s)
+ if s then pcall(function() LT.GlobalShadows=false settings().Rendering.QualityLevel=Enum.QualityLevel.Level01 for _,o in pairs(WS:GetDescendants()) do if o:IsA("ParticleEmitter") or o:IsA("Trail") or o:IsA("Smoke") or o:IsA("Fire") then pcall(function() o.Enabled=false end) end end end)
+ else pcall(function() LT.GlobalShadows=true settings().Rendering.QualityLevel=Enum.QualityLevel.Automatic end) end
+end
+local function rejoin() pcall(function() TP:Teleport(game.PlaceId,LP) end) end
+local function serverHop()
+ if not httpReq then notify("⚠️","لا HTTP","error") return end
+ task.spawn(function()
+  local ok,r=pcall(httpReq,{Url="https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100",Method="GET"})
+  if not ok or not r then notify("⚠️","فشل","error") return end
+  local d,data=pcall(function() return HS:JSONDecode(r.Body) end)
+  if not d or not data or not data.data then return end
+  local sv={}
+  for _,s in ipairs(data.data) do if s.playing and s.playing<(s.maxPlayers or 0)-1 and s.id~=game.JobId then table.insert(sv,s.id) end end
+  if #sv==0 then notify("⚠️","لا يوجد","error") return end
+  notify("🌐","جاري الانتقال","success")
+  pcall(function() TP:TeleportToPlaceInstance(game.PlaceId,sv[math.random(1,#sv)],LP) end)
+ end)
 end
 
+-- AI
+local AIP="أنت botayf، مساعد ذكي عربي. رد بالعربية دايماً. كن مختصر (1-3 جمل)."
+local aiH={}
+local BL={"user not found","not found","error","failed","invalid","404","500","unauthorized","rate limit"}
+local function hB(t) if not t then return false end local l=string.lower(tostring(t)) for _,w in ipairs(BL) do if l:find(w,1,true) then return true end end return false end
+local function pOAI(r)
+ if not r then return nil end
+ local o,d=pcall(function() return HS:JSONDecode(r) end)
+ if o and d then if d.choices and d.choices[1] and d.choices[1].message then return d.choices[1].message.content elseif d.content then return d.content elseif d.response then return d.response end end
+end
+local function tPoll(m)
+ local o,r=pcall(httpReq,{Url="https://text.pollinations.ai/openai",Method="POST",Headers={["Content-Type"]="application/json"},Body=HS:JSONEncode({model="openai",messages=m})})
+ if not o or not r or not r.Body then return nil end
+ if r.StatusCode and r.StatusCode>=400 then return nil end
+ local raw=tostring(r.Body) if hB(raw) then return nil end return pOAI(raw)
+end
+local function tLLM(m)
+ local o,r=pcall(httpReq,{Url="https://api.llm7.io/v1/chat/completions",Method="POST",Headers={["Content-Type"]="application/json",["Authorization"]="Bearer unused"},Body=HS:JSONEncode({model="gpt-4o-mini",messages=m,max_tokens=350})})
+ if not o or not r or not r.Body then return nil end
+ if r.StatusCode and r.StatusCode>=400 then return nil end
+ local raw=tostring(r.Body) if hB(raw) then return nil end return pOAI(raw)
+end
+local function tPollGET(t)
+ local u="https://text.pollinations.ai/"..HS:UrlEncode(t).."?model=openai&seed="..math.random(1,999999)
+ local o,r=pcall(httpReq,{Url=u,Method="GET",Headers={["Accept"]="text/plain"}})
+ if not o or not r or not r.Body then return nil end
+ if #r.Body<3 then return nil end
+ local x=tostring(r.Body) if hB(x) then return nil end return x
+end
+local function askAI(t,cb)
+ if not httpReq then cb(false,"❌ No HTTP") return end
+ local ans=false
+ local function sf(o,m) if ans then return end ans=true cb(o,m) end
+ task.delay(40,function() sf(false,"⏰ تأخر") end)
+ task.spawn(function()
+  local msgs={{role="system",content=AIP}} for _,h in ipairs(aiH) do table.insert(msgs,h) end table.insert(msgs,{role="user",content=t})
+  local function fin(x)
+   if not x or x=="" then return false end
+   x=tostring(x):gsub("^%s+",""):gsub("%s+$","")
+   if hB(x) or x=="" then return false end
+   table.insert(aiH,{role="user",content=t}) table.insert(aiH,{role="assistant",content=x})
+   while #aiH>6 do table.remove(aiH,1) end
+   sf(true,x) return true
+  end
+  if fin(tPoll(msgs)) then return end task.wait(0.2)
+  if fin(tLLM(msgs)) then return end task.wait(0.2)
+  if fin(tPollGET(t)) then return end
+  sf(false,"⚠️ المزودين مشغولين")
+ end)
+end
+
+-- Support
+local lastSeen,primed=nil,false
+local shownM={}
+local function decodeM(r)
+ if not r then return nil end
+ local o,d=pcall(function() return HS:JSONDecode(r.Body) end)
+ if not o then return nil end
+ if r.StatusCode and r.StatusCode>=400 then return nil end
+ return d
+end
+local function sendSup(t,cb)
+ if not httpReq then if cb then cb(false,nil) end return end
+ task.spawn(function()
+  local o,r=pcall(httpReq,{Url=MSG_URL,Method="POST",Headers={["Content-Type"]="application/json",["Authorization"]="Bearer "..AK},Body=HS:JSONEncode({project_id=PID,player_user_id=LP.UserId,player_name=LP.Name,message=t})})
+  if not o then if cb then cb(false,nil) end return end
+  local d=decodeM(r) if not d then if cb then cb(false,nil) end return end
+  if cb then cb(true,d) end
+ end)
+end
+local supF,supO,supMO,supS=nil,false,0,false
+local addSupB
+local function openSup()
+ if supO and supF then return end
+ supO=true
+ supF=Instance.new("Frame") supF.Size=UDim2.new(0,380,0,440) supF.Position=UDim2.new(0.5,-190,0.5,-220) supF.BackgroundColor3=Color3.fromRGB(15,10,5) supF.BackgroundTransparency=0.12 supF.BorderSizePixel=0 supF.Active=true supF.Draggable=true supF.Parent=NG
+ Instance.new("UICorner",supF).CornerRadius=UDim.new(0,16)
+ local st=Instance.new("UIStroke",supF) st.Color=Color3.fromRGB(255,140,0) st.Thickness=1.2 st.Transparency=0.3
+ local bg=Instance.new("UIGradient",supF) bg.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(28,18,10)),ColorSequenceKeypoint.new(1,Color3.fromRGB(10,7,3))}) bg.Rotation=90
+ local hd=Instance.new("Frame") hd.Size=UDim2.new(1,0,0,44) hd.BackgroundTransparency=1 hd.Parent=supF
+ local tl=Instance.new("TextLabel") tl.Size=UDim2.new(1,-110,0,18) tl.Position=UDim2.new(0,16,0,8) tl.BackgroundTransparency=1 tl.Text="💬 الدعم (AI + Owner)" tl.TextColor3=Color3.fromRGB(255,195,110) tl.TextSize=14 tl.Font=Enum.Font.GothamBold tl.TextXAlignment=Enum.TextXAlignment.Left tl.Parent=hd
+ local sl=Instance.new("TextLabel") sl.Size=UDim2.new(1,-110,0,12) sl.Position=UDim2.new(0,16,0,26) sl.BackgroundTransparency=1 sl.Text="🤖 AI  •  👑 Owner  •  💬 دعم مباشر" sl.TextColor3=Color3.fromRGB(180,120,60) sl.TextSize=9 sl.Font=Enum.Font.Gotham sl.TextXAlignment=Enum.TextXAlignment.Left sl.Parent=hd
+ local cb=Instance.new("TextButton") cb.Size=UDim2.new(0,26,0,26) cb.Position=UDim2.new(1,-34,0,9) cb.BackgroundColor3=Color3.fromRGB(200,40,40) cb.BorderSizePixel=0 cb.Text="✕" cb.TextColor3=Color3.fromRGB(255,255,255) cb.TextSize=13 cb.Font=Enum.Font.GothamBold cb.Parent=hd
+ Instance.new("UICorner",cb).CornerRadius=UDim.new(0,7)
+ cb.MouseButton1Click:Connect(function() supF:Destroy() supF=nil supO=false end)
+ local sc=Instance.new("ScrollingFrame") sc.Size=UDim2.new(1,-16,1,-120) sc.Position=UDim2.new(0,8,0,52) sc.BackgroundColor3=Color3.fromRGB(20,12,5) sc.BackgroundTransparency=0.4 sc.BorderSizePixel=0 sc.ScrollBarThickness=3 sc.ScrollBarImageColor3=Color3.fromRGB(255,140,0) sc.CanvasSize=UDim2.new(0,0,0,0) sc.AutomaticCanvasSize=Enum.AutomaticSize.Y sc.Parent=supF
+ Instance.new("UICorner",sc).CornerRadius=UDim.new(0,10)
+ local ll=Instance.new("UIListLayout",sc) ll.SortOrder=Enum.SortOrder.LayoutOrder ll.Padding=UDim.new(0,4)
+ local pd=Instance.new("UIPadding",sc) pd.PaddingTop=UDim.new(0,6) pd.PaddingBottom=UDim.new(0,6) pd.PaddingLeft=UDim.new(0,6) pd.PaddingRight=UDim.new(0,6)
+ addSupB=function(s,t,id)
+  if id and shownM["sup_"..id] then return end
+  if id then shownM["sup_"..id]=true end
+  supMO=supMO+1
+  local isU=(s=="player" or s=="user") isA=(s=="ai" or s=="bot") isO=(s=="owner")
+  local c=Instance.new("Frame") c.Size=UDim2.new(1,-4,0,0) c.AutomaticSize=Enum.AutomaticSize.Y c.BackgroundTransparency=1 c.LayoutOrder=supMO c.Parent=sc
+  local av=Instance.new("ImageLabel") av.Size=UDim2.new(0,26,0,26) av.Position=isU and UDim2.new(1,-26,0,0) or UDim2.new(0,0,0,0) av.BackgroundColor3=Color3.fromRGB(30,18,8) av.BorderSizePixel=0
+  if isU then av.Image="rbxthumb://type=AvatarHeadShot&id="..tostring(LP.UserId).."&w=100&h=100" else av.Image="" end
+  av.Parent=c
+  Instance.new("UICorner",av).CornerRadius=UDim.new(1,0)
+  local avs=Instance.new("UIStroke",av) avs.Thickness=1.5
+  if isU then avs.Color=Color3.fromRGB(255,140,0) elseif isA then avs.Color=Color3.fromRGB(120,180,255) elseif isO then avs.Color=Color3.fromRGB(255,215,0) else avs.Color=Color3.fromRGB(255,200,120) end
+  if isA or isO then
+   av.BackgroundColor3=isA and Color3.fromRGB(40,60,120) or Color3.fromRGB(120,80,0)
+   local ic=Instance.new("TextLabel") ic.Size=UDim2.new(1,0,1,0) ic.BackgroundTransparency=1 ic.Text=isA and "🤖" or "👑" ic.TextSize=15 ic.Parent=av
+  end
+  local b=Instance.new("TextButton") b.Size=UDim2.new(1,-34,0,0) b.AutomaticSize=Enum.AutomaticSize.Y b.Position=isU and UDim2.new(0,0,0,0) or UDim2.new(0,34,0,0) b.BackgroundColor3=isU and Color3.fromRGB(255,140,0) or (isA and Color3.fromRGB(35,55,90) or (isO and Color3.fromRGB(90,60,20) or Color3.fromRGB(35,22,12))) b.BackgroundTransparency=0.1 b.BorderSizePixel=0 b.Text="" b.AutoButtonColor=false b.Parent=c
+  Instance.new("UICorner",b).CornerRadius=UDim.new(0,8)
+  local bs=Instance.new("UIStroke",b) bs.Thickness=1.2 bs.Transparency=0.3
+  if isU then bs.Color=Color3.fromRGB(255,200,120) elseif isA then bs.Color=Color3.fromRGB(120,180,255) elseif isO then bs.Color=Color3.fromRGB(255,215,0) else bs.Color=Color3.fromRGB(255,200,120) end
+  local p2=Instance.new("UIPadding",b) p2.PaddingTop=UDim.new(0,4) p2.PaddingBottom=UDim.new(0,4) p2.PaddingLeft=UDim.new(0,7) p2.PaddingRight=UDim.new(0,7)
+  local l2=Instance.new("UIListLayout",b) l2.SortOrder=Enum.SortOrder.LayoutOrder l2.Padding=UDim.new(0,1)
+  local nl=Instance.new("TextLabel") nl.Size=UDim2.new(1,0,0,13) nl.BackgroundTransparency=1 nl.RichText=true
+  if isU then nl.Text="👤 <b>أنت</b>"
+  elseif isA then nl.Text="🤖 <b>AI</b>"
+  elseif isO then nl.Text="👑 <b>Owner</b>"
+  else nl.Text="💬 <b>Support</b>" end
+  nl.TextColor3=isU and Color3.fromRGB(60,25,0) or (isA and Color3.fromRGB(150,200,255) or (isO and Color3.fromRGB(255,220,150) or Color3.fromRGB(255,180,90)))
+  nl.TextSize=9 nl.Font=Enum.Font.GothamBold nl.TextXAlignment=Enum.TextXAlignment.Left nl.LayoutOrder=1 nl.Parent=b
+  local tl2=Instance.new("TextLabel") tl2.Size=UDim2.new(1,0,0,0) tl2.AutomaticSize=Enum.AutomaticSize.Y tl2.BackgroundTransparency=1 tl2.Text=tostring(t) tl2.TextColor3=Color3.fromRGB(255,255,255) tl2.TextSize=11 tl2.Font=Enum.Font.Gotham tl2.TextWrapped=true tl2.TextXAlignment=Enum.TextXAlignment.Left tl2.TextYAlignment=Enum.TextYAlignment.Top tl2.LayoutOrder=2 tl2.Parent=b
+  task.wait() sc.CanvasPosition=Vector2.new(0,sc.AbsoluteCanvasSize.Y)
+ end
+ local ib=Instance.new("Frame") ib.Size=UDim2.new(1,-16,0,42) ib.Position=UDim2.new(0,8,1,-50) ib.BackgroundColor3=Color3.fromRGB(30,18,8) ib.BackgroundTransparency=0.15 ib.BorderSizePixel=0 ib.Parent=supF
+ Instance.new("UICorner",ib).CornerRadius=UDim.new(1,0)
+ local ibs=Instance.new("UIStroke",ib) ibs.Color=Color3.fromRGB(255,140,0) ibs.Thickness=1 ibs.Transparency=0.5
+ local inp=Instance.new("TextBox") inp.Size=UDim2.new(1,-60,1,-10) inp.Position=UDim2.new(0,14,0,5) inp.BackgroundTransparency=1 inp.Text="" inp.PlaceholderText="اكتب رسالتك..." inp.PlaceholderColor3=Color3.fromRGB(170,110,55) inp.TextColor3=Color3.fromRGB(255,240,220) inp.TextSize=12 inp.Font=Enum.Font.Gotham inp.TextXAlignment=Enum.TextXAlignment.Left inp.ClearTextOnFocus=false inp.Parent=ib
+ local sb=Instance.new("TextButton") sb.Size=UDim2.new(0,40,0,30) sb.Position=UDim2.new(1,-45,0,6) sb.BackgroundColor3=Color3.fromRGB(255,140,0) sb.BorderSizePixel=0 sb.Text="➤" sb.TextColor3=Color3.fromRGB(255,255,255) sb.TextSize=16 sb.Font=Enum.Font.GothamBold sb.Parent=ib
+ Instance.new("UICorner",sb).CornerRadius=UDim.new(1,0)
+ local function snd()
+  if supS then return end
+  local t=inp.Text:gsub("^%s+",""):gsub("%s+$","")
+  if t=="" then return end
+  supS=true sb.Text="…" inp.Text=""
+  addSupB("player",t,nil)
+  sendSup(t,function(ok,data)
+   supS=false sb.Text="➤"
+   if not ok then addSupB("ai","⚠️ فشل",nil) return end
+   if data and data.replies then for _,r in ipairs(data.replies) do addSupB(r.sender or "ai",r.message or "",r.id or r.created_at) end end
+   if data and data.reply then addSupB("ai",data.reply,nil) end
+  end)
+ end
+ sb.MouseButton1Click:Connect(snd)
+ inp.FocusLost:Connect(function(e) if e then snd() end end)
+ addSupB("ai","أهلاً "..LP.Name.."! 👋 اسألني أي شي.",nil)
+end
+local function pollSup()
+ if not httpReq then return end
+ local u=MSG_URL.."?project_id="..PID.."&player_user_id="..LP.UserId
+ if lastSeen then u=u.."&since="..HS:UrlEncode(lastSeen) end
+ local o,r=pcall(httpReq,{Url=u,Method="GET",Headers={["Authorization"]="Bearer "..AK}})
+ if not o then return end
+ local d=decodeM(r)
+ if not d or not d.messages then return end
+ for _,m in ipairs(d.messages) do
+  lastSeen=m.created_at
+  local id=m.id or m.created_at
+  if id and not shownM[id] and primed then shownM[id]=true if supF and addSupB then addSupB(m.sender or "support",m.message or "",id) end
+  elseif id then shownM[id]=true end
+ end
+ primed=true
+end
+
+-- PLAYER CHAT + DM
+local lastCID=nil
+local pcSeen={}
+local pcAll={}
+local pcF,pcO,pcMO,pcS=nil,false,0,false
+local pcDM=nil
+local ccCache={}
+local function sendPM(to,msg,cb)
+ if not httpReq then if cb then cb(false,"No HTTP") end return end
+ task.spawn(function()
+  local gn="Unknown" pcall(function() gn=MPS:GetProductInfo(game.PlaceId).Name end)
+  local o,r=pcall(httpReq,{Url=CHAT_URL.."/send",Method="POST",Headers={["Content-Type"]="application/json",["Authorization"]="Bearer "..AK},Body=HS:JSONEncode({project_id=PID,key=Key,from_user_id=LP.UserId,from_username=LP.Name,to_user_id=to,message=msg,place_id=game.PlaceId,game_name=gn})})
+  if not o then if cb then cb(false,"Fail") end return end
+  local d=decodeM(r) if not d then if cb then cb(false,"Bad") end return end
+  if cb then cb(true,nil) end
+ end)
+end
+local function pushPM(s,n,t,id,av,ex)
+ if id then for _,m in ipairs(pcAll) do if m.id==id then return end end end
+ table.insert(pcAll,{s=s,n=n,t=t,id=id,av=av,tm=os.time(),pid=ex and ex.pid,gm=ex and ex.gm})
+ if _G._amtRenderPCM and pcF then pcall(_G._amtRenderPCM,pcAll[#pcAll]) end
+end
+local function getNewPM()
+ if not httpReq then return end
+ local u=CHAT_URL.."/messages?project_id="..PID.."&user_id="..LP.UserId.."&key="..HS:UrlEncode(Key)
+ if lastCID then u=u.."&last_message_id="..lastCID end
+ local o,r=pcall(httpReq,{Url=u,Method="GET",Headers={["Authorization"]="Bearer "..AK}})
+ if not o then return end
+ local d=decodeM(r) if not d then return end
+ local f=(lastCID==nil)
+ for _,m in ipairs(d.messages or {}) do
+  local id=tostring(m.id or m.created_at or tick())
+  if pcSeen[id] then continue end
+  pcSeen[id]=true
+  if not f and m.from_user_id~=LP.UserId then pushPM("them",tostring(m.from_username or "؟"),tostring(m.message or ""),id,m.from_user_id,{pid=m.place_id,gm=m.game_name}) end
+ end
+ lastCID=d.last_message_id
+end
+local function cFlag(c)
+ if not c or #c~=2 then return "" end
+ local o1,b1=pcall(function() return c:sub(1,1):upper():byte()-65+0xA6 end)
+ local o2,b2=pcall(function() return c:sub(2,2):upper():byte()-65+0xA6 end)
+ if not o1 or not o2 or not b1 or not b2 then return "" end
+ return string.char(0xF0,0x9F,0x87,b1,0xF0,0x9F,0x87,b2)
+end
+task.spawn(function() while true do task.wait(8) pcall(function() for _,p in ipairs(Players:GetPlayers()) do if not ccCache[p.UserId] then local ls=game:GetService("LocalizationService") local o,c=pcall(function() return ls:GetCountryRegionForPlayerAsync(p) end) if o and c and c~="" then ccCache[p.UserId]=c end end end end) end end)
+
+local profF=nil
+local function showProf(pn,avId,sPid,sGn)
+ if profF then pcall(function() profF:Destroy() end) end
+ local p=Players:FindFirstChild(pn)
+ local uid=avId or (p and p.UserId) or 0
+ local isMe=(pn==LP.Name)
+ profF=Instance.new("Frame") profF.Size=UDim2.new(0,300,0,420) profF.Position=UDim2.new(0.5,-150,0.5,-210) profF.BackgroundColor3=Color3.fromRGB(15,10,5) profF.BackgroundTransparency=0.08 profF.BorderSizePixel=0 profF.Active=true profF.Draggable=true profF.Parent=NG
+ Instance.new("UICorner",profF).CornerRadius=UDim.new(0,16)
+ local st=Instance.new("UIStroke",profF) st.Color=Color3.fromRGB(255,140,0) st.Thickness=1.3 st.Transparency=0.25
+ local cb=Instance.new("TextButton") cb.Size=UDim2.new(0,26,0,26) cb.Position=UDim2.new(1,-32,0,8) cb.BackgroundColor3=Color3.fromRGB(200,40,40) cb.Text="✕" cb.TextColor3=Color3.fromRGB(255,255,255) cb.TextSize=14 cb.Font=Enum.Font.GothamBold cb.BorderSizePixel=0 cb.Parent=profF
+ Instance.new("UICorner",cb).CornerRadius=UDim.new(0,6)
+ cb.MouseButton1Click:Connect(function() profF:Destroy() profF=nil end)
+ local ba=Instance.new("ImageLabel") ba.Size=UDim2.new(0,90,0,90) ba.Position=UDim2.new(0.5,-45,0,14) ba.BackgroundColor3=Color3.fromRGB(30,18,8) ba.BorderSizePixel=0 ba.Image="rbxthumb://type=AvatarHeadShot&id="..tostring(uid).."&w=352&h=352" ba.Parent=profF
+ Instance.new("UICorner",ba).CornerRadius=UDim.new(1,0)
+ local avs=Instance.new("UIStroke",ba) avs.Color=Color3.fromRGB(255,140,0) avs.Thickness=2
+ local nl=Instance.new("TextLabel") nl.Size=UDim2.new(1,-20,0,18) nl.Position=UDim2.new(0,10,0,110) nl.BackgroundTransparency=1 nl.Text=p and (p.DisplayName or p.Name) or pn nl.TextColor3=Color3.fromRGB(255,200,120) nl.TextSize=14 nl.Font=Enum.Font.GothamBold nl.Parent=profF
+ local ul=Instance.new("TextLabel") ul.Size=UDim2.new(1,-20,0,14) ul.Position=UDim2.new(0,10,0,128) ul.BackgroundTransparency=1 ul.Text="@"..(p and p.Name or pn).." • ID: "..tostring(uid) ul.TextColor3=Color3.fromRGB(180,130,70) ul.TextSize=10 ul.Font=Enum.Font.Gotham ul.Parent=profF
+ local ob=Instance.new("TextLabel") ob.Size=UDim2.new(0,70,0,16) ob.Position=UDim2.new(0.5,-35,0,145) ob.BackgroundColor3=p and Color3.fromRGB(40,90,40) or Color3.fromRGB(60,40,40) ob.Text=p and "🟢 أونلاين" or "⚫ أوفلاين" ob.TextColor3=Color3.fromRGB(255,255,255) ob.TextSize=9 ob.Font=Enum.Font.GothamBold ob.BorderSizePixel=0 ob.Parent=profF
+ Instance.new("UICorner",ob).CornerRadius=UDim.new(1,0)
+ local ib=Instance.new("Frame") ib.Size=UDim2.new(1,-20,1,-210) ib.Position=UDim2.new(0,10,0,168) ib.BackgroundColor3=Color3.fromRGB(28,18,8) ib.BackgroundTransparency=0.35 ib.BorderSizePixel=0 ib.Parent=profF
+ Instance.new("UICorner",ib).CornerRadius=UDim.new(0,10)
+ local il=Instance.new("UIListLayout",ib) il.Padding=UDim.new(0,6) il.SortOrder=Enum.SortOrder.LayoutOrder
+ local ip=Instance.new("UIPadding",ib) ip.PaddingTop=UDim.new(0,10) ip.PaddingBottom=UDim.new(0,10) ip.PaddingLeft=UDim.new(0,12) ip.PaddingRight=UDim.new(0,12)
+ local od=0
+ local function addR(t,c)
+  od=od+1
+  local r=Instance.new("TextLabel") r.Size=UDim2.new(1,0,0,15) r.BackgroundTransparency=1 r.Text=t r.TextColor3=c or Color3.fromRGB(230,200,170) r.TextSize=11 r.Font=Enum.Font.Gotham r.TextXAlignment=Enum.TextXAlignment.Left r.LayoutOrder=od r.Parent=ib
+  return r
+ end
+ local r=RANKS[pn] or "Member" local rd=RD[r] or RD.Member
+ addR("🎃 الرتبة: "..rd.e.." "..r,Color3.fromRGB(255,200,130))
+ local hid=Hidden[pn] or {}
+ if isMe and hid.country then addR("🌍 الدولة: 🔒 مخفي",Color3.fromRGB(150,120,90))
+ else
+  local cc=ccCache[uid]
+  if cc then addR("🌍 الدولة: "..cFlag(cc).." "..cc)
+  else
+   local cr=addR("🌍 الدولة: ⏳",Color3.fromRGB(180,140,90))
+   task.spawn(function()
+    if p then local ls=game:GetService("LocalizationService") local o,c=pcall(function() return ls:GetCountryRegionForPlayerAsync(p) end) if o and c and c~="" then ccCache[uid]=c cr.Text="🌍 الدولة: "..cFlag(c).." "..c return end end
+    cr.Text="🌍 الدولة: ❔ مخفي"
+   end)
+  end
+ end
+ if sPid and sGn then addR("🎮 يلعب: "..(sPid==game.PlaceId and "هذه اللعبة" or tostring(sGn)))
+ elseif p then addR("🎮 يلعب: هذه اللعبة")
+ else addR("🎮 يلعب: ❔") end
+ if p then
+  local ls=p:FindFirstChild("leaderstats")
+  if ls then
+   local c=ls:FindFirstChild("Coins") or ls:FindFirstChild("Coin")
+   if c and (c:IsA("IntValue") or c:IsA("NumberValue")) then addR("💰 الكوينات: "..tostring(c.Value),Color3.fromRGB(255,220,100)) end
+  end
+ end
+ if p then
+  local k,d=0,0
+  local ls=p:FindFirstChild("leaderstats")
+  if ls then
+   local kk=ls:FindFirstChild("Kills") or ls:FindFirstChild("Kill")
+   local dd=ls:FindFirstChild("Deaths") or ls:FindFirstChild("Death")
+   if kk and (kk:IsA("IntValue") or kk:IsA("NumberValue")) then k=kk.Value end
+   if dd and (dd:IsA("IntValue") or dd:IsA("NumberValue")) then d=dd.Value end
+  end
+  if k>0 or d>0 then addR("⚔️ قتل: "..k.." • 💀 وفاة: "..d) end
+ end
+ local role=(RoleData[pn] and RoleData[pn].Role) or "Unknown"
+ local re="❔"
+ if role=="Murderer" then re="🔪" elseif role=="Sheriff" then re="🔫" elseif role=="Innocent" then re="👤" end
+ if not (isMe and hid.role) then addR("🎭 الدور: "..re.." "..role)
+ else addR("🎭 الدور: 🔒 مخفي",Color3.fromRGB(150,120,90)) end
+ if isMe then
+  local hb=Instance.new("TextButton") hb.Size=UDim2.new(1,-30,0,32) hb.Position=UDim2.new(0,15,1,-42) hb.BackgroundColor3=Color3.fromRGB(80,50,20) hb.Text="⚙️ إدارة الخصوصية" hb.TextColor3=Color3.fromRGB(255,220,180) hb.TextSize=12 hb.Font=Enum.Font.GothamBold hb.BorderSizePixel=0 hb.Parent=profF
+  Instance.new("UICorner",hb).CornerRadius=UDim.new(0,8)
+  local hs=Instance.new("UIStroke",hb) hs.Color=Color3.fromRGB(255,140,0) hs.Thickness=1
+  hb.MouseButton1Click:Connect(function()
+   local cur=Hidden[pn] or {country=false,role=false}
+   Hidden[pn]={country=not cur.country,role=not cur.role}
+   saveHidden()
+   profF:Destroy() profF=nil
+   showProf(pn,uid)
+  end)
+ end
+end
+
+local function openPC()
+ if pcO and pcF then return end
+ pcO=true
+ pcDM=nil
+ pcF=Instance.new("Frame") pcF.Size=UDim2.new(0,380,0,440) pcF.Position=UDim2.new(0.5,-190,0.5,-220) pcF.BackgroundColor3=Color3.fromRGB(15,10,5) pcF.BackgroundTransparency=0.12 pcF.BorderSizePixel=0 pcF.Active=true pcF.Draggable=true pcF.Parent=NG
+ Instance.new("UICorner",pcF).CornerRadius=UDim.new(0,16)
+ local st=Instance.new("UIStroke",pcF) st.Color=Color3.fromRGB(255,140,0) st.Thickness=1.2 st.Transparency=0.3
+ local bgr=Instance.new("UIGradient",pcF) bgr.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(28,18,10)),ColorSequenceKeypoint.new(1,Color3.fromRGB(10,7,3))}) bgr.Rotation=90
+ local hd=Instance.new("Frame") hd.Size=UDim2.new(1,0,0,44) hd.BackgroundTransparency=1 hd.Parent=pcF
+ local tl=Instance.new("TextLabel") tl.Size=UDim2.new(1,-110,0,18) tl.Position=UDim2.new(0,16,0,8) tl.BackgroundTransparency=1 tl.Text="💬 شات اللاعبين" tl.TextColor3=Color3.fromRGB(255,195,110) tl.TextSize=14 tl.Font=Enum.Font.GothamBold tl.TextXAlignment=Enum.TextXAlignment.Left tl.Parent=hd
+ local sl=Instance.new("TextLabel") sl.Size=UDim2.new(1,-110,0,12) sl.Position=UDim2.new(0,16,0,26) sl.BackgroundTransparency=1 sl.Text="🌐 عام • 📩 خاص • 👆 اضغط الاسم للخاص" sl.TextColor3=Color3.fromRGB(180,120,60) sl.TextSize=9 sl.Font=Enum.Font.Gotham sl.TextXAlignment=Enum.TextXAlignment.Left sl.Parent=hd
+ local cb=Instance.new("TextButton") cb.Size=UDim2.new(0,26,0,26) cb.Position=UDim2.new(1,-34,0,9) cb.BackgroundColor3=Color3.fromRGB(200,40,40) cb.BorderSizePixel=0 cb.Text="✕" cb.TextColor3=Color3.fromRGB(255,255,255) cb.TextSize=13 cb.Font=Enum.Font.GothamBold cb.Parent=hd
+ Instance.new("UICorner",cb).CornerRadius=UDim.new(0,7)
+ cb.MouseButton1Click:Connect(function() pcF:Destroy() pcF=nil pcO=false pcDM=nil _G._amtRenderPCM=nil end)
+ local idB=Instance.new("Frame") idB.Size=UDim2.new(1,-20,0,28) idB.Position=UDim2.new(0,10,0,52) idB.BackgroundColor3=Color3.fromRGB(30,18,8) idB.BackgroundTransparency=0.2 idB.BorderSizePixel=0 idB.Parent=pcF
+ Instance.new("UICorner",idB).CornerRadius=UDim.new(1,0)
+ local idS=Instance.new("UIStroke",idB) idS.Color=Color3.fromRGB(255,140,0) idS.Thickness=1 idS.Transparency=0.55
+ local idI=Instance.new("TextBox") idI.Size=UDim2.new(1,-24,1,0) idI.Position=UDim2.new(0,12,0,0) idI.BackgroundTransparency=1 idI.Text="" idI.PlaceholderText="🎯 UserId (فاضي = عام)" idI.PlaceholderColor3=Color3.fromRGB(170,110,55) idI.TextColor3=Color3.fromRGB(255,230,200) idI.TextSize=11 idI.Font=Enum.Font.Gotham idI.TextXAlignment=Enum.TextXAlignment.Left idI.ClearTextOnFocus=false idI.Parent=idB
+ local sc=Instance.new("ScrollingFrame") sc.Size=UDim2.new(1,-16,1,-176) sc.Position=UDim2.new(0,8,0,86) sc.BackgroundColor3=Color3.fromRGB(20,12,5) sc.BackgroundTransparency=0.4 sc.BorderSizePixel=0 sc.ScrollBarThickness=3 sc.ScrollBarImageColor3=Color3.fromRGB(255,140,0) sc.CanvasSize=UDim2.new(0,0,0,0) sc.AutomaticCanvasSize=Enum.AutomaticSize.Y sc.Parent=pcF
+ Instance.new("UICorner",sc).CornerRadius=UDim.new(0,10)
+ local ll=Instance.new("UIListLayout",sc) ll.SortOrder=Enum.SortOrder.LayoutOrder ll.Padding=UDim.new(0,4)
+ local pd=Instance.new("UIPadding",sc) pd.PaddingTop=UDim.new(0,6) pd.PaddingBottom=UDim.new(0,6) pd.PaddingLeft=UDim.new(0,6) pd.PaddingRight=UDim.new(0,6)
+
+ local function render(e)
+  pcMO=pcMO+1
+  local s,n,t,av=e.s,e.n,e.t,e.av
+  local isMe=(s=="me") isSys=(s=="system")
+  local c=Instance.new("Frame") c.Size=UDim2.new(1,-4,0,0) c.AutomaticSize=Enum.AutomaticSize.Y c.BackgroundTransparency=1 c.LayoutOrder=pcMO c.Parent=sc
+  if isSys then
+   local sl2=Instance.new("TextLabel") sl2.Size=UDim2.new(1,0,0,0) sl2.AutomaticSize=Enum.AutomaticSize.Y sl2.BackgroundTransparency=1 sl2.Text="⚙ "..tostring(t) sl2.TextColor3=Color3.fromRGB(200,150,90) sl2.TextSize=9 sl2.Font=Enum.Font.Gotham sl2.TextWrapped=true sl2.Parent=c
+   task.wait() sc.CanvasPosition=Vector2.new(0,sc.AbsoluteCanvasSize.Y) return
+  end
+  local rn=RANKS[n] or "Member" local ri=RD[rn] or RD.Member local hR=(rn~="Member")
+  local av2=Instance.new("ImageButton") av2.Size=UDim2.new(0,26,0,26) av2.Position=isMe and UDim2.new(1,-26,0,0) or UDim2.new(0,0,0,0) av2.BackgroundColor3=Color3.fromRGB(30,18,8) av2.BorderSizePixel=0 av2.AutoButtonColor=false
+  local tid=av or (isMe and LP.UserId or 0)
+  av2.Image="rbxthumb://type=AvatarHeadShot&id="..tostring(tid).."&w=100&h=100" av2.Parent=c
+  Instance.new("UICorner",av2).CornerRadius=UDim.new(1,0)
+  local avs=Instance.new("UIStroke",av2) avs.Thickness=hR and 2 or 1.2 avs.Color=hR and ri.c or (isMe and Color3.fromRGB(255,140,0) or Color3.fromRGB(255,200,120))
+  if not isMe and n and n~="؟" then av2.MouseButton1Click:Connect(function() showProf(n,av,e.pid,e.gm) end) end
+  local b=Instance.new("TextButton") b.Size=UDim2.new(1,-34,0,0) b.AutomaticSize=Enum.AutomaticSize.Y b.Position=isMe and UDim2.new(0,0,0,0) or UDim2.new(0,34,0,0) b.BackgroundColor3=isMe and Color3.fromRGB(255,140,0) or Color3.fromRGB(35,22,12) b.BackgroundTransparency=isMe and 0.1 or 0.15 b.BorderSizePixel=0 b.Text="" b.AutoButtonColor=false b.Parent=c
+  Instance.new("UICorner",b).CornerRadius=UDim.new(0,8)
+  local bs=Instance.new("UIStroke",b) bs.Thickness=hR and 1.5 or 1 bs.Color=hR and ri.c or (isMe and Color3.fromRGB(255,200,120) or Color3.fromRGB(120,70,30)) bs.Transparency=hR and 0.2 or 0.5
+  local p2=Instance.new("UIPadding",b) p2.PaddingTop=UDim.new(0,4) p2.PaddingBottom=UDim.new(0,4) p2.PaddingLeft=UDim.new(0,7) p2.PaddingRight=UDim.new(0,7)
+  local l2=Instance.new("UIListLayout",b) l2.SortOrder=Enum.SortOrder.LayoutOrder l2.Padding=UDim.new(0,1)
+  local nl=Instance.new("TextButton") nl.Size=UDim2.new(1,0,0,13) nl.BackgroundTransparency=1 nl.RichText=true nl.TextXAlignment=Enum.TextXAlignment.Left nl.Font=Enum.Font.GothamBold nl.TextSize=9 nl.AutoButtonColor=false
+  if hR then nl.Text=ri.e.." <b>"..tostring(n).."</b>" else nl.Text=tostring(n or "؟") end
+  nl.TextColor3=hR and ri.c or (isMe and Color3.fromRGB(60,25,0) or Color3.fromRGB(255,180,90)) nl.LayoutOrder=1 nl.Parent=b
+  if hR then
+   local ng=Instance.new("UIStroke",nl) ng.Color=ri.c ng.Thickness=1.2 ng.Transparency=0.15 ng.ApplyStrokeMode=Enum.ApplyStrokeMode.Contextual
+   task.spawn(function() while nl and nl.Parent do task.wait(0.05) local x=(math.sin(tick()*2)+1)/2 nl.TextColor3=ri.g[1]:Lerp(ri.g[2],x) ng.Transparency=0.1+math.sin(tick()*3)*0.1 end end)
+  end
+  if not isMe and n and n~="؟" and av and av~=0 then
+   nl.MouseButton1Click:Connect(function()
+    pcDM={n=n,id=av}
+    idI.Text=tostring(av)
+    if _G._amtShowDMBar then pcall(_G._amtShowDMBar) end
+   end)
+  end
+  local tl2=Instance.new("TextLabel") tl2.Size=UDim2.new(1,0,0,0) tl2.AutomaticSize=Enum.AutomaticSize.Y tl2.BackgroundTransparency=1 tl2.Text=tostring(t) tl2.TextColor3=isMe and Color3.fromRGB(255,255,255) or Color3.fromRGB(240,220,200) tl2.TextSize=11 tl2.Font=Enum.Font.Gotham tl2.TextWrapped=true tl2.TextXAlignment=Enum.TextXAlignment.Left tl2.TextYAlignment=Enum.TextYAlignment.Top tl2.LayoutOrder=2 tl2.Parent=b
+  task.wait() sc.CanvasPosition=Vector2.new(0,sc.AbsoluteCanvasSize.Y)
+ end
+ _G._amtRenderPCM=render
+ task.wait()
+ for _,e in ipairs(pcAll) do pcall(render,e) end
+ if #pcAll==0 then
+  render({s="system",n="",t="أهلاً "..(LP.DisplayName or LP.Name).." 👋",id="wl1"})
+  render({s="system",n="",t="👆 اضغط الاسم للخاص  •  اضغط الصورة للبروفايل",id="wl2"})
+ end
+
+ local dmBar=Instance.new("Frame") dmBar.Size=UDim2.new(1,-16,0,26) dmBar.Position=UDim2.new(0,8,1,-82) dmBar.BackgroundColor3=Color3.fromRGB(45,25,10) dmBar.BackgroundTransparency=0.15 dmBar.BorderSizePixel=0 dmBar.Visible=false dmBar.Parent=pcF
+ Instance.new("UICorner",dmBar).CornerRadius=UDim.new(0,8)
+ local dmS=Instance.new("UIStroke",dmBar) dmS.Color=Color3.fromRGB(255,180,60) dmS.Thickness=1 dmS.Transparency=0.4
+ local dmIcon=Instance.new("TextLabel") dmIcon.Size=UDim2.new(0,26,1,0) dmIcon.Position=UDim2.new(0,4,0,0) dmIcon.BackgroundTransparency=1 dmIcon.Text="📩" dmIcon.TextSize=14 dmIcon.Parent=dmBar
+ local dmTxt=Instance.new("TextLabel") dmTxt.Size=UDim2.new(1,-70,1,0) dmTxt.Position=UDim2.new(0,30,0,0) dmTxt.BackgroundTransparency=1 dmTxt.Text="" dmTxt.TextColor3=Color3.fromRGB(255,220,170) dmTxt.TextSize=11 dmTxt.Font=Enum.Font.GothamBold dmTxt.TextXAlignment=Enum.TextXAlignment.Left dmTxt.Parent=dmBar
+ local dmX=Instance.new("TextButton") dmX.Size=UDim2.new(0,22,0,22) dmX.Position=UDim2.new(1,-26,0,2) dmX.BackgroundColor3=Color3.fromRGB(180,40,40) dmX.Text="✕" dmX.TextColor3=Color3.fromRGB(255,255,255) dmX.TextSize=11 dmX.Font=Enum.Font.GothamBold dmX.BorderSizePixel=0 dmX.Parent=dmBar
+ Instance.new("UICorner",dmX).CornerRadius=UDim.new(0,6)
+ dmX.MouseButton1Click:Connect(function()
+  pcDM=nil
+  dmBar.Visible=false
+  idI.Text=""
+ end)
+ _G._amtShowDMBar=function()
+  if pcDM then
+   dmBar.Visible=true
+   dmTxt.Text=pcDM.n..":"
+  end
+ end
+
+ local ib=Instance.new("Frame") ib.Size=UDim2.new(1,-16,0,42) ib.Position=UDim2.new(0,8,1,-50) ib.BackgroundColor3=Color3.fromRGB(30,18,8) ib.BackgroundTransparency=0.15 ib.BorderSizePixel=0 ib.Parent=pcF
+ Instance.new("UICorner",ib).CornerRadius=UDim.new(1,0)
+ local ibs=Instance.new("UIStroke",ib) ibs.Color=Color3.fromRGB(255,140,0) ibs.Thickness=1 ibs.Transparency=0.5
+ local inp=Instance.new("TextBox") inp.Size=UDim2.new(1,-60,1,-10) inp.Position=UDim2.new(0,14,0,5) inp.BackgroundTransparency=1 inp.Text="" inp.PlaceholderText="اكتب رسالة..." inp.PlaceholderColor3=Color3.fromRGB(170,110,55) inp.TextColor3=Color3.fromRGB(255,240,220) inp.TextSize=12 inp.Font=Enum.Font.Gotham inp.TextXAlignment=Enum.TextXAlignment.Left inp.ClearTextOnFocus=false inp.Parent=ib
+ local sb=Instance.new("TextButton") sb.Size=UDim2.new(0,40,0,30) sb.Position=UDim2.new(1,-45,0,6) sb.BackgroundColor3=Color3.fromRGB(255,140,0) sb.BorderSizePixel=0 sb.Text="➤" sb.TextColor3=Color3.fromRGB(255,255,255) sb.TextSize=16 sb.Font=Enum.Font.GothamBold sb.Parent=ib
+ Instance.new("UICorner",sb).CornerRadius=UDim.new(1,0)
+ local function snd()
+  if pcS then return end
+  local t=inp.Text:gsub("^%s+",""):gsub("%s+$","")
+  if t=="" then return end
+  local to=pcDM and pcDM.id or tonumber(idI.Text)
+  local toName=pcDM and pcDM.n or nil
+  pcS=true sb.Text="…" inp.Text=""
+  local gn="Unknown" pcall(function() gn=MPS:GetProductInfo(game.PlaceId).Name end)
+  local disp=t..(to and (" → "..(toName or to)) or "")
+  pushPM("me",LP.DisplayName or LP.Name,disp,"me_"..tostring(tick()),LP.UserId,{pid=game.PlaceId,gm=gn})
+  sendPM(to,t,function(ok,err)
+   pcS=false sb.Text="➤"
+   if ok then pushPM("system","","✅ تم الإرسال "..(to and "(خاص)" or "(عام)"),"sys_"..tostring(tick()),nil)
+   else pushPM("system","","⚠️ فشل: "..tostring(err),"sys_"..tostring(tick()),nil) end
+  end)
+ end
+ sb.MouseButton1Click:Connect(snd)
+ inp.FocusLost:Connect(function(e) if e then snd() end end)
+end
+
+task.spawn(function() while true do task.wait(5) pcall(pollSup) end end)
+task.spawn(function() while true do task.wait(2) pcall(getNewPM) end end)
+
+-- MAIN UI
 task.spawn(function()
-	while true do
-		task.wait(0.02)
-		if _G.AMT.AimbotMurderer then
-			local m = GetMurdererPlayer()
-			if m and m.Character then
-				local hrp = m.Character:FindFirstChild("HumanoidRootPart")
-				if hrp then
-					local cam = workspace.CurrentCamera
-					local target = CFrame.new(cam.CFrame.Position, hrp.Position)
-					local smooth = _G.AMT.AimbotSmooth or 0.25
-					cam.CFrame = cam.CFrame:Lerp(target, 1 - smooth)
-					pcall(function()
-						VirtualUser:CaptureController()
-						VirtualUser:ClickButton1(Vector2.new(500, 500))
-					end)
-				end
-			end
-		end
-	end
+ task.wait(1)
+ local WindUI=loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+ -- 🟠 AMT ORANGE THEME
+ WindUI:AddTheme({
+  Name="AMTOrange",
+  Accent=OR,
+  Background=Color3.fromHex("#14100B"),
+  Outline=Color3.fromHex("#593719"),
+  Text=Color3.fromHex("#FFFFFF"),
+  Placeholder=Color3.fromHex("#BFA58C"),
+  Button=Color3.fromHex("#A85400"),
+  Icon=Color3.fromHex("#FFA333"),
+  TabBackground=Color3.fromHex("#21170E"),
+  TabTitle=Color3.fromHex("#FFFFFF"),
+  TabIcon=OR,
+  ElementBackground=Color3.fromHex("#24190F"),
+  ElementTitle=Color3.fromHex("#FFFFFF"),
+  ElementDesc=Color3.fromHex("#CBB69F"),
+  ElementIcon=OR,
+  Toggle=OR,
+  Slider=OR,
+ })
+
+ local Window=WindUI:CreateWindow({Title="🎃 AMT MEGA v43",Icon="crown",Author="by AMT 🎃",Folder="AMTMegaHub",Size=UDim2.fromOffset(620,540),Theme="AMTOrange",Transparent=true,Resizable=true,OpenButton={Title="🎃 افتح",Icon="mouse-pointer-click",CornerRadius=UDim.new(0,16),Color=ColorSequence.new(Color3.fromRGB(255,140,0),Color3.fromRGB(20,20,20)),OnlyMobile=false},KeySystem={Title="🎃 AMT MEGA",Note="أدخل المفتاح",SaveKey=true,URL=KEY_URL,KeyValidator=function(k)
+  local v,msg,info=verifyKey(k)
+  if info and info.status=="killed" then LP:Kick("⛔ "..tostring(info.message)) return false
+  elseif info and info.status=="maintenance" then LP:Kick("🛠️ "..tostring(info.message)) return false
+  elseif info and info.status=="executor_blocked" then LP:Kick("🚫 "..tostring(info.message)) return false end
+  if v then Key=k _G.AMT_KEY=k WindUI:Notify({Title="✅ تم التفعيل",Content=tostring(msg),Duration=4,Icon="check-circle"}) task.wait(2) pollSup() return true
+  else WindUI:Notify({Title="❌ مفتاح خاطئ",Content=tostring(msg),Duration=4,Icon="x-circle"}) return false end
+ end}})
+ local function wN(t,x,ty) if A.ShowNotifications then notify(t,x,ty) end end
+
+ local DT=Window:Tab({Title="📊 Dashboard",Icon="layout-dashboard"})
+
+ -- 🎃 BANNER (LOGO)
+ DT:Section({Title="🎃 AMT MEGA"})
+ DT:Paragraph({
+  Title="AMT MEGA v43",
+  Desc="🎃 Orange Edition\n👋 Welcome "..LP.Name.."\n✨ Created by AMT",
+  Image=LOGO,
+  ImageSize=64,
+  Thumbnail=LOGO,
+ })
+
+ -- 🎮 زر الديسكورد (تحت الشعار)
+ task.spawn(function()
+  task.wait(2)
+  local hui=gethui and gethui() or game:GetService("CoreGui")
+  local banner,parent
+  for _,o in ipairs(hui:GetDescendants()) do
+   if o:IsA("ImageLabel") and o.Image and tostring(o.Image):find("130355082765285") then
+    banner=o
+    parent=o.Parent and o.Parent.Parent
+    break
+   end
+  end
+  if not parent then return end
+  local old=parent:FindFirstChild("AMT_DiscordBtn") if old then old:Destroy() end
+  local btn=Instance.new("TextButton")
+  btn.Name="AMT_DiscordBtn"
+  btn.Size=UDim2.new(1,-20,0,46)
+  btn.BackgroundColor3=Color3.fromRGB(88,101,242)
+  btn.BorderSizePixel=0
+  btn.Text="🎮 ادخل ديسكورد"
+  btn.TextColor3=Color3.fromRGB(255,255,255)
+  btn.TextSize=17
+  btn.Font=Enum.Font.GothamBold
+  btn.AutoButtonColor=true
+  if banner and banner.LayoutOrder then btn.LayoutOrder=banner.LayoutOrder+1 end
+  btn.Parent=parent
+  Instance.new("UICorner",btn).CornerRadius=UDim.new(0,10)
+  local st=Instance.new("UIStroke",btn)
+  st.Color=Color3.fromRGB(120,130,255)
+  st.Thickness=1.8
+  btn.MouseButton1Click:Connect(function()
+   pcall(function()
+    if setclipboard then setclipboard(DISCORD_INVITE) end
+    if openbrowser then openbrowser(DISCORD_INVITE) end
+   end)
+   WindUI:Notify({Title="🎮 Discord",Content="تم نسخ رابط الديسكورد!\n"..DISCORD_INVITE,Duration=6,Icon="check-circle"})
+  end)
+ end)
+
+ DT:Divider()
+
+ DT:Section({Title="👤 معلوماتك"})
+ local UI=DT:Paragraph({Title="👤",Desc="..."})
+ task.spawn(function() while true do task.wait(1) local ch=LP.Character local h=ch and ch:FindFirstChildOfClass("Humanoid") local hrp=ch and ch:FindFirstChild("HumanoidRootPart") local rd=RD[MY_RANK] or RD.Member local ps=hrp and (math.floor(hrp.Position.X)..","..math.floor(hrp.Position.Y)..","..math.floor(hrp.Position.Z)) or "?" local hp=h and (math.floor(h.Health).."/"..math.floor(h.MaxHealth)) or "?"
+  pcall(function() UI:SetDesc("👤 "..LP.DisplayName.."\n🎃 "..rd.e.." "..MY_RANK.."\n🎭 "..A.MyRole.."\n❤️ "..hp.."\n📍 "..ps) end) end end)
+ DT:Divider()
+ DT:Section({Title="🎮 الجولة"})
+ local RI=DT:Paragraph({Title="🎮",Desc="..."})
+ task.spawn(function() while true do task.wait(1) pcall(function() RI:SetDesc("🎯 "..(A.RoundActive and "🟢 نشطة" or "🔴 متوقفة").."\n💰 "..A.CollectedCoins.."/"..A.TargetCoins.."\n🔪 الحد: "..A.MinCoinsBeforeKill.."\n⚡ "..A.SpeedValue) end) end end)
+ DT:Divider()
+ DT:Section({Title="🌐 السيرفر"})
+ local SI=DT:Paragraph({Title="🌐",Desc="..."})
+ task.spawn(function() while true do task.wait(2) pcall(function() local gn="?" pcall(function() gn=MPS:GetProductInfo(game.PlaceId).Name end) local pg=math.floor(LP:GetNetworkPing()*1000) SI:SetDesc("🎮 "..gn.."\n👥 "..#Players:GetPlayers().."\n📶 "..pg.."ms\n🔌 "..EXE) end) end end)
+
+ local FT=Window:Tab({Title="🌾 Auto Farm",Icon="wheat"})
+ FT:Section({Title="🎃 فارم"})
+ FT:Toggle({Title="🎃 تشغيل الفارم",Default=A.AutoEnabled,Callback=function(s) A.AutoEnabled=s if s then A.AutoEngageKilling=false A.AutoEngageKilled=false SafeB.Position=Vector3.new(0,99999,0) task.spawn(farmLoop) wN("🎃","الفارم شغال","success") else if CurTween then CurTween:Cancel() CurTween=nil end Plat.CFrame=CFrame.new(0,99999,0) unfreezeAll() wN("🖤","توقف","warn") end end})
+ FT:Slider({Title="⚡ السرعة",Step=1,Value={Min=5,Max=100,Default=A.SpeedValue},Callback=function(v) A.SpeedValue=v saveSet() end})
+ FT:Divider()
+ FT:Section({Title="🎯 Auto Engage"})
+ FT:Toggle({Title="🎃 ذبح تلقائي",Default=A.AutoEngageEnabled,Callback=function(s) A.AutoEngageEnabled=s if not s then A.AutoEngageKilling=false SafeB.Position=Vector3.new(0,99999,0) end saveSet() wN(s and "🎃" or "🖤","Auto Engage "..(s and "شغال" or "موقف"),s and "success" or "warn") end})
+ FT:Slider({Title="🔪 الحد الأدنى للذبح",Step=1,Value={Min=1,Max=100,Default=A.MinCoinsBeforeKill},Callback=function(v) A.MinCoinsBeforeKill=v saveSet() end})
+ FT:Divider()
+ local FS=FT:Paragraph({Title="📊",Desc="..."})
+ task.spawn(function() while true do task.wait(1) pcall(function() local md="🖤 متوقف" if A.AutoEngageKilling then md="🔥 يذبح!" elseif A.AutoEnabled then md="🎃 شغال" end FS:SetDesc("🎃 "..md.."\n💎 "..A.CollectedCoins.."/"..A.TargetCoins.."\n🔪 "..A.MinCoinsBeforeKill) end) end end)
+ FT:Button({Title="🔥 Instant Kill All",Icon="zap",Callback=function() if A.MyRole~="Murderer" then wN("⚠️","لازم القاتل","error") return end pcall(pullAll) task.wait(0.3) pcall(equipK) task.wait(0.2) pcall(atkAll) task.wait(0.2) pcall(killRem) task.wait(0.5) pcall(unfreezeAll) wN("💀","تم!","success") end})
+
+ local ET=Window:Tab({Title="ESP",Icon="eye"})
+ ET:Section({Title="👁️ ESP"})
+ ET:Toggle({Title="👁️ ESP اللاعبين",Default=A.ESPPlayers,Callback=function(s) A.ESPPlayers=s if s then for _,p in ipairs(Players:GetPlayers()) do createESP(p) end else for p,_ in pairs(ESPObj) do removeESP(p) end end end})
+ ET:Toggle({Title="🎭 ESP الأدوار",Default=A.ESPRoles,Callback=function(s) A.ESPRoles=s end})
+ ET:Toggle({Title="📝 ESP الأسماء",Default=A.ESPNames,Callback=function(s) A.ESPNames=s end})
+ ET:Toggle({Title="❤️ ESP الصحة",Default=A.ESPHealth,Callback=function(s) A.ESPHealth=s end})
+ ET:Toggle({Title="📏 ESP المسافة",Default=A.ESPDistance,Callback=function(s) A.ESPDistance=s end})
+ ET:Toggle({Title="🔧 ESP الأسلحة",Default=A.ESPWeapons,Callback=function(s) A.ESPWeapons=s end})
+ ET:Divider()
+ ET:Section({Title="🏷️ Head Tags"})
+ ET:Toggle({Title="🏷️ Head Tags للجميع",Default=A.ESPVIPTags,Callback=function(s) A.ESPVIPTags=s if not s then for p,_ in pairs(HeadTags) do removeHT(p) end end refreshHT() end})
+ ET:Divider()
+ ET:Toggle({Title="💰 ESP العملات",Default=A.ESPCoins,Callback=function(s) A.ESPCoins=s end})
+
+ local CT=Window:Tab({Title="Combat",Icon="sword"})
+ CT:Section({Title="🎯 Aimbot"})
+ CT:Toggle({Title="🎯 Aimbot على القاتل",Default=false,Callback=function(s) A.AimbotMurderer=s end})
+ CT:Slider({Title="🎯 السلاسة",Step=0.05,Value={Min=0.05,Max=0.9,Default=0.25},Callback=function(v) A.AimbotSmooth=v end})
+ CT:Divider()
+ CT:Section({Title="💀 Kill Aura"})
+ CT:Toggle({Title="💀 Kill Aura",Default=false,Callback=function(s) A.KillAura=s end})
+ CT:Slider({Title="📏 المدى",Step=1,Value={Min=5,Max=50,Default=15},Callback=function(v) A.KillAuraRange=v end})
+ CT:Divider()
+ CT:Section({Title="📦 Hitbox"})
+ CT:Slider({Title="📦 الحجم",Step=0.5,Value={Min=2,Max=15,Default=2},Callback=function(v) A.HitboxSize=v for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then for _,pt in ipairs(p.Character:GetDescendants()) do if pt:IsA("BasePart") then pcall(function() pt.Size=Vector3.new(v,v,v) end) end end end end end})
+
+ local ST=Window:Tab({Title="Sheriff",Icon="crosshair"})
+ ST:Section({Title="👮 الشريف"})
+ ST:Toggle({Title="🔫 Auto Grab Gun",Default=false,Callback=function(s) A.AutoGrabGun=s wN(s and "🎃" or "🖤","Grab Gun "..(s and "شغال" or "موقف")) end})
+
+ local PT=Window:Tab({Title="Player",Icon="person-standing"})
+ PT:Section({Title="🏃 الحركة"})
+ PT:Slider({Title="🏃 Speed",Step=1,Value={Min=16,Max=500,Default=16},Callback=function(v) local c=LP.Character if c and c:FindFirstChildOfClass("Humanoid") then c:FindFirstChildOfClass("Humanoid").WalkSpeed=v end end})
+ PT:Slider({Title="🦘 Jump",Step=1,Value={Min=50,Max=500,Default=50},Callback=function(v) local c=LP.Character if c and c:FindFirstChildOfClass("Humanoid") then c:FindFirstChildOfClass("Humanoid").JumpPower=v end end})
+ PT:Toggle({Title="✈️ Fly (جوال + كمبيوتر)",Default=false,Callback=function(s) toggleFly(s) if s then createFlyCtl() else destroyFlyCtl() end wN(s and "✈️" or "🖤","Fly "..(s and "شغال" or "موقف")) end})
+ PT:Divider()
+ PT:Section({Title="🎁 إضافات"})
+ PT:Toggle({Title="💡 Full Bright",Default=false,Callback=function(s) setFB(s) wN(s and "💡" or "🖤","Full Bright") end})
+ PT:Toggle({Title="⚡ FPS Booster",Default=false,Callback=function(s) setFPS(s) wN(s and "⚡" or "🖤","FPS Boost") end})
+ PT:Toggle({Title="😴 Auto AFK",Default=A.AutoAFK,Callback=function(s) A.AutoAFK=s saveSet() wN(s and "😴" or "🖤","Auto AFK") end})
+ PT:Button({Title="🦅 Respawn فوري",Icon="zap",Callback=function() local c=LP.Character if c then local h=c:FindFirstChildOfClass("Humanoid") if h then h.Health=0 end end task.wait(0.1) LP:LoadCharacter() end})
+
+ local SV=Window:Tab({Title="Server",Icon="server"})
+ SV:Section({Title="🌐 إدارة"})
+ SV:Button({Title="🔄 إعادة الدخول",Icon="refresh-cw",Callback=function() rejoin() end})
+ SV:Button({Title="🌐 تغيير السيرفر",Icon="shuffle",Callback=function() serverHop() end})
+ SV:Toggle({Title="🔁 Auto Rejoin",Default=A.AutoRejoin,Callback=function(s) A.AutoRejoin=s wN(s and "✅" or "🖤","Auto Rejoin") end})
+
+ local AT=Window:Tab({Title="🤖 AI",Icon="bot"})
+ AT:Section({Title="🤖 botayf"})
+ local qQ=""
+ AT:Input({Title="📝 سؤال",Placeholder="اكتب...",Callback=function(t) qQ=t end})
+ AT:Button({Title="🚀 إرسال",Icon="send",Callback=function() if qQ=="" then wN("⚠️","اكتب","error") return end wN("⏳ botayf","جاري...") askAI(qQ,function(ok,r) wN("🤖 botayf",r) end) end})
+ AT:Button({Title="🧹 مسح الذاكرة",Icon="trash-2",Callback=function() aiH={} wN("🧹","تم","success") end})
+
+ local SPT=Window:Tab({Title="💬 الدعم",Icon="headphones"})
+ SPT:Section({Title="💬 الدعم"})
+ SPT:Button({Title="💬 فتح شات الدعم",Icon="message-circle",Callback=function() openSup() end})
+ SPT:Button({Title="🧹 مسح",Icon="trash-2",Callback=function() shownM={} if supF then supF:Destroy() supF=nil supO=false end wN("🧹","تم","success") end})
+
+ local PCT=Window:Tab({Title="💬 شات اللاعبين",Icon="users"})
+ PCT:Section({Title="💬 محادثة"})
+ PCT:Paragraph({Title="💡",Desc="• UserId فاضي = عام\n• UserId موجود = خاص\n• 👆 اضغط الاسم = DM مباشر\n• اضغط الصورة = البروفايل"})
+ PCT:Button({Title="💬 فتح الشات",Icon="message-circle",Callback=function() openPC() end})
+ PCT:Button({Title="🧹 مسح",Icon="trash-2",Callback=function() pcSeen={} pcAll={} _G._amtRenderPCM=nil pcMO=0 if pcF then pcF:Destroy() pcF=nil pcO=false end wN("🧹","تم","success") end})
+
+ if IS_HELPER then
+  local OT=Window:Tab({Title="👑 Owner Panel",Icon="crown"})
+  OT:Section({Title="👤 رتبتك"})
+  OT:Paragraph({Title="💎",Desc=(RD[MY_RANK] and RD[MY_RANK].e or "🎫").." "..MY_RANK.." (Power: "..MY_POWER..")"})
+  OT:Divider()
+  OT:Section({Title="🎯 تغيير رتبة"})
+  local tPN="" local sRN="VIP"
+  OT:Input({Title="👤 اسم اللاعب",Placeholder="AMTbadboy",Callback=function(t) tPN=t end})
+  OT:Dropdown({Title="🏆 الرتبة",Values=IS_OWNER and {"Owner","CoOwner","SrAdmin","Admin","SrMod","Mod","Helper","Elite","VIP","Member"} or (IS_COOWNER and {"SrAdmin","Admin","SrMod","Mod","Helper","Elite","VIP","Member"} or (IS_SRADMIN and {"Admin","SrMod","Mod","Helper","Elite","VIP","Member"} or (IS_ADMIN and {"SrMod","Mod","Helper","Elite","VIP","Member"} or (IS_SRMOD and {"Mod","Helper","Elite","VIP","Member"} or (IS_MOD and {"Helper","Elite","VIP","Member"} or {"Elite","VIP","Member"}))))),Value="VIP",Callback=function(v) sRN=v end})
+  OT:Button({Title="✅ تعيين",Icon="check",Callback=function()
+   if tPN=="" then wN("⚠️","اكتب اسم","error") return end
+   local tp=RP[sRN] or 0
+   if MY_POWER<100 and tp>=MY_POWER then wN("🚫","ما تقدر","error") return end
+   if getRank(tPN)=="Owner" and not IS_OWNER then wN("🚫","لا","error") return end
+   RANKS[tPN]=sRN saveRanks()
+   if tPN==LP.Name then updRank(sRN) end
+   task.spawn(function() for i=1,3 do bcast("AMT_RANK::"..tPN.."::"..sRN) task.wait(0.4) end end)
+   local p=Players:FindFirstChild(tPN) if p then removeHT(p) task.wait(0.2) createHT(p) end
+   refreshHT() wN("🎃",tPN.." → "..sRN,"success")
+  end})
+  OT:Divider()
+  OT:Section({Title="🚫 طرد"})
+  OT:Button({Title="🚫 طرد اللاعب",Icon="ban",Callback=function()
+   if tPN=="" then wN("⚠️","اكتب","error") return end
+   if getRank(tPN)=="Owner" and not IS_OWNER then wN("🚫","لا","error") return end
+   if getPower(tPN)>=MY_POWER and not IS_OWNER then wN("🚫","لا","error") return end
+   KICKED[tPN]={reason="من الإدارة",by=LP.Name,time=os.date("%Y-%m-%d %H:%M:%S")} saveKicked()
+   task.spawn(function() for i=1,5 do bcast("AMT_KICK::"..tPN.."::من الإدارة") task.wait(0.4) end end)
+   local p=Players:FindFirstChild(tPN) if p then pcall(function() p:Kick("🎃 تم طردك") end) end
+   wN("🚫","تم الطرد","success")
+  end})
+  OT:Button({Title="🔓 إلغاء",Icon="unlock",Callback=function()
+   if tPN=="" then wN("⚠️","اكتب","error") return end
+   if KICKED[tPN] then KICKED[tPN]=nil saveKicked() task.spawn(function() for i=1,3 do bcast("AMT_UNKICK::"..tPN) task.wait(0.4) end end) wN("✅","تم","success")
+   else wN("⚠️","مو موجود","warn") end
+  end})
+  OT:Divider()
+  OT:Section({Title="📋 الرتب"})
+  local RL=OT:Paragraph({Title="👥",Desc="..."})
+  task.spawn(function() while true do task.wait(2) local ln={} local sr={} for n,r in pairs(RANKS) do table.insert(sr,{n=n,r=r,p=RP[r] or 0}) end table.sort(sr,function(a,b) return a.p>b.p end) for _,e in ipairs(sr) do local rd=RD[e.r] local on=Players:FindFirstChild(e.n) and " 🟢" or " ⚪" table.insert(ln,(rd and rd.e or "❔").." "..e.r.." | "..e.n..on) end pcall(function() RL:SetDesc(#ln==0 and "لا يوجد" or table.concat(ln,"\n")) end) end end)
+ end
+
+ local SET=Window:Tab({Title="Settings",Icon="settings"})
+ SET:Section({Title="🎨"})
+ SET:Slider({Title="📏 مدة الإشعارات",Step=1,Value={Min=2,Max=15,Default=A.NotificationDuration},Callback=function(v) A.NotificationDuration=v saveSet() end})
+ SET:Toggle({Title="🔔 الإشعارات",Default=A.ShowNotifications,Callback=function(s) A.ShowNotifications=s saveSet() end})
+ SET:Divider()
+ SET:Button({Title="🟠 AMT Orange",Callback=function() Window:SetTheme("AMTOrange"); wN("🟠","Orange") end})
+ SET:Button({Title="🖤 Dark",Callback=function() Window:SetTheme("Dark"); wN("🎃","Dark") end})
+ SET:Button({Title="🎃 Light",Callback=function() Window:SetTheme("Light"); wN("🎃","Light") end})
+ SET:Divider()
+ SET:Button({Title="💾 حفظ الإعدادات",Callback=function() saveSet() wN("💾","تم","success") end})
+
+ local IT=Window:Tab({Title="Info",Icon="info"})
+ IT:Section({Title="👤"})
+ IT:Paragraph({Title="🎃",Desc=LP.Name.." (ID: "..LP.UserId..")\n"..(RD[MY_RANK] and RD[MY_RANK].e or "🎫").." "..MY_RANK})
+ IT:Divider()
+ IT:Section({Title="🆕 v43.0"})
+ IT:Paragraph({Title="✅ المضاف",Desc="🟢 DM مباشر (اضغط الاسم)\n🟢 زر X للخروج من DM\n🟢 توهج الاسم بالشات\n🟢 شات الدعم بنفس التصميم\n🟢 شات AI بنفس التصميم\n🟢 زر ديسكورد أزرق"})
+ IT:Paragraph({Title="🔧 المعدَّل",Desc="🟡 ESP مصلّح (Highlight في Workspace)\n🟡 Head Tags للجميع\n🟡 Kill Aura مصلّح\n🟡 Auto Engage 40"})
+ IT:Divider()
+ IT:Section({Title="🎨 الثيم"})
+ IT:Paragraph({Title="🟠",Desc="AMT Orange Edition\nكل الأزرار والتوغلات برتقالية"})
+ IT:Divider()
+ IT:Section({Title="📊"})
+ IT:Paragraph({Title="🖥️",Desc="Executor: "..EXE.."\nv43.0.0 ORANGE + DISCORD"})
+ notify("🎃 AMT MEGA v43","🟠 Orange + 🎮 Discord جاهز!","success")
 end)
 
-task.spawn(function()
-	while true do
-		task.wait(0.1)
-		if _G.AMT.KillAura then
-			local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-			if myHrp then
-				local range = _G.AMT.KillAuraRange or 15
-				for _, p in ipairs(Players:GetPlayers()) do
-					if p ~= LocalPlayer and p.Character then
-						local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-						local hum = p.Character:FindFirstChildOfClass("Humanoid")
-						if hrp and hum and hum.Health > 0 and (hrp.Position - myHrp.Position).Magnitude <= range then
-							pcall(function() if killEvent then killEvent:FireServer(p.Name) end end)
-						end
-					end
-				end
-			end
-		end
-	end
-end)
-
-local function findGunDrop()
-	for _, obj in pairs(Workspace:GetDescendants()) do
-		if obj:IsA("BasePart") and (obj.Name == "GunDrop" or obj.Name == "Gun") then return obj end
-	end
-	return nil
-end
-
-task.spawn(function()
-	while true do
-		task.wait(0.1)
-		if _G.AMT.AutoGrabGun then
-			local char = LocalPlayer.Character
-			if char then
-				local hum = char:FindFirstChildOfClass("Humanoid")
-				if hum and hum.Health > 0 then
-					local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
-					local hasGun = (char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun")))
-					if not hasGun then
-						local gun = findGunDrop()
-						if gun then
-							local hrp = char:FindFirstChild("HumanoidRootPart")
-							if hrp then
-								local op = hrp.CFrame
-								hrp.CFrame = gun.CFrame
-								task.wait(0.05)
-								pcall(function()
-									firetouchinterest(hrp, gun, 0)
-									firetouchinterest(hrp, gun, 1)
-								end)
-								task.wait(0.05)
-								hrp.CFrame = op
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-end)
-
-local flyConn = nil
-local function toggleFly(state)
-	_G.AMT.FlyEnabled = state
-	local char = LocalPlayer.Character
-	if not char then return end
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-	if state then
-		local bg = Instance.new("BodyGyro")
-		bg.P = 9e4; bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9); bg.CFrame = hrp.CFrame; bg.Parent = hrp
-		local bv = Instance.new("BodyVelocity")
-		bv.Velocity = Vector3.new(0, 0, 0); bv.MaxForce = Vector3.new(9e9, 9e9, 9e9); bv.Parent = hrp
-		flyConn = RunService.Heartbeat:Connect(function()
-			if not hrp or not hrp.Parent then return end
-			local cam = workspace.CurrentCamera
-			local md = Vector3.new()
-			if UIS:IsKeyDown(Enum.KeyCode.W) then md = md + cam.CFrame.LookVector end
-			if UIS:IsKeyDown(Enum.KeyCode.S) then md = md - cam.CFrame.LookVector end
-			if UIS:IsKeyDown(Enum.KeyCode.A) then md = md - cam.CFrame.RightVector end
-			if UIS:IsKeyDown(Enum.KeyCode.D) then md = md + cam.CFrame.RightVector end
-			if UIS:IsKeyDown(Enum.KeyCode.Space) then md = md + Vector3.new(0, 1, 0) end
-			if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then md = md - Vector3.new(0, 1, 0) end
-			bv.Velocity = md.Magnitude > 0 and md.Unit * 80 or Vector3.new(0, 0, 0)
-			bg.CFrame = cam.CFrame
-		end)
-	else
-		if flyConn then flyConn:Disconnect(); flyConn = nil end
-		for _, o in ipairs(hrp:GetChildren()) do
-			if o:IsA("BodyVelocity") or o:IsA("BodyGyro") then o:Destroy() end
-		end
-	end
-end
-
-local function setFullBright(state)
-	if state then
-		Lighting.Brightness = 3
-		Lighting.ClockTime = 14
-		Lighting.Ambient = Color3.fromRGB(180, 130, 80)
-		Lighting.OutdoorAmbient = Color3.fromRGB(200, 150, 90)
-		Lighting.FogEnd = 100000
-	else
-		Lighting.Brightness = 2
-		Lighting.Ambient = Color3.fromRGB(70, 50, 30)
-		Lighting.OutdoorAmbient = Color3.fromRGB(128, 90, 50)
-	end
-end
-
-local antiFlingConn = nil
-local function setupAntiFling()
-	if antiFlingConn then antiFlingConn:Disconnect() end
-	antiFlingConn = RunService.Heartbeat:Connect(function()
-		if not _G.AMT.AntiFling then return end
-		local char = LocalPlayer.Character
-		if not char then return end
-		local hrp = char:FindFirstChild("HumanoidRootPart")
-		if not hrp then return end
-		for _, v in ipairs(hrp:GetChildren()) do
-			if v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") then v:Destroy() end
-		end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum and hum.PlatformStand then hum.PlatformStand = false end
-	end)
-end
-setupAntiFling()
-
-local function rejoin() pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end) end
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🤖 AI ENGINE
--- ═══════════════════════════════════════════════════════════════════════
-local SYSTEM_PROMPT = "أنت botayf، مساعد ذكي عربي. رد بالعربية دايماً. كن مختصر (1-3 جمل)."
-
-local aiHistory = {}
-local BLOCKED = {"user not found", "not found", "error", "failed", "invalid", "404", "500", "unauthorized", "rate limit"}
-
-local function hasBlocked(t)
-	if not t then return false end
-	local l = string.lower(tostring(t))
-	for _, w in ipairs(BLOCKED) do
-		if l:find(w, 1, true) then return true end
-	end
-	return false
-end
-
-local function parseOpenAI(raw)
-	if not raw then return nil end
-	local okJ, data = pcall(function() return HttpService:JSONDecode(raw) end)
-	if okJ and data then
-		if data.choices and data.choices[1] and data.choices[1].message then
-			return data.choices[1].message.content
-		elseif data.content then return data.content
-		elseif data.response then return data.response end
-	end
-	return nil
-end
-
-local function tryLLM7(messages)
-	local ok, res = pcall(httpRequest, {
-		Url = "https://api.llm7.io/v1/chat/completions", Method = "POST",
-		Headers = {["Content-Type"] = "application/json", ["Authorization"] = "Bearer unused"},
-		Body = HttpService:JSONEncode({model = "default", messages = messages, max_tokens = 300}),
-	})
-	if not ok or not res or not res.Body then return nil end
-	if res.StatusCode and res.StatusCode >= 400 then return nil end
-	local raw = tostring(res.Body)
-	if hasBlocked(raw) then return nil end
-	return parseOpenAI(raw)
-end
-
-local function tryKeylessAI(messages)
-	local ok, res = pcall(httpRequest, {
-		Url = "https://keylessai.thryx.workers.dev/v1/chat/completions", Method = "POST",
-		Headers = {["Content-Type"] = "application/json"},
-		Body = HttpService:JSONEncode({model = "gpt-4o", messages = messages}),
-	})
-	if not ok or not res or not res.Body then return nil end
-	if res.StatusCode and res.StatusCode >= 400 then return nil end
-	local raw = tostring(res.Body)
-	if hasBlocked(raw) then return nil end
-	return parseOpenAI(raw)
-end
-
-local function tryPollinationsPOST(messages)
-	local ok, res = pcall(httpRequest, {
-		Url = "https://text.pollinations.ai/openai", Method = "POST",
-		Headers = {["Content-Type"] = "application/json", ["Accept"] = "text/plain"},
-		Body = HttpService:JSONEncode({model = "openai", messages = messages}),
-	})
-	if not ok or not res or not res.Body then return nil end
-	if res.StatusCode and res.StatusCode >= 400 then return nil end
-	local raw = tostring(res.Body)
-	if hasBlocked(raw) then return nil end
-	return parseOpenAI(raw)
-end
-
-local function tryPollinationsGET(text)
-	local url = "https://text.pollinations.ai/" .. HttpService:UrlEncode(text) .. "?model=openai&seed=" .. math.random(1, 999999)
-	local ok, res = pcall(httpRequest, {Url = url, Method = "GET", Headers = {["Accept"] = "text/plain"}})
-	if not ok or not res or not res.Body then return nil end
-	if #res.Body < 3 then return nil end
-	local txt = tostring(res.Body)
-	if hasBlocked(txt) then return nil end
-	return txt
-end
-
-local function tryKilo(messages)
-	local ok, res = pcall(httpRequest, {
-		Url = "https://api.kilo.ai/api/gateway/chat/completions", Method = "POST",
-		Headers = {["Content-Type"] = "application/json", ["Authorization"] = "Bearer unused"},
-		Body = HttpService:JSONEncode({model = "gpt-4o-mini", messages = messages, max_tokens = 300}),
-	})
-	if not ok or not res or not res.Body then return nil end
-	if res.StatusCode and res.StatusCode >= 400 then return nil end
-	local raw = tostring(res.Body)
-	if hasBlocked(raw) then return nil end
-	return parseOpenAI(raw)
-end
-
-local function tryUncloseai(messages)
-	local ok, res = pcall(httpRequest, {
-		Url = "https://api.uncloseai.com/v1/chat/completions", Method = "POST",
-		Headers = {["Content-Type"] = "application/json"},
-		Body = HttpService:JSONEncode({model = "gpt-4o-mini", messages = messages}),
-	})
-	if not ok or not res or not res.Body then return nil end
-	if res.StatusCode and res.StatusCode >= 400 then return nil end
-	local raw = tostring(res.Body)
-	if hasBlocked(raw) then return nil end
-	return parseOpenAI(raw)
-end
-
-local function askAI(text, callback)
-	if not httpRequest then callback(false, "❌ لا يوجد HTTP") return end
-	local answered = false
-	local function safe(ok, msg)
-		if answered then return end
-		answered = true
-		callback(ok, msg)
-	end
-	task.delay(40, function() safe(false, "⏰ تأخر الرد") end)
-
-	task.spawn(function()
-		local messages = {{role = "system", content = SYSTEM_PROMPT}}
-		for _, h in ipairs(aiHistory) do table.insert(messages, h) end
-		table.insert(messages, {role = "user", content = text})
-
-		local function finish(aiText)
-			if not aiText or aiText == "" then return false end
-			aiText = tostring(aiText):gsub("^%s+", ""):gsub("%s+$", "")
-			aiText = aiText:gsub("%[%[.-%]%]", "")
-			if hasBlocked(aiText) or aiText == "" then return false end
-			table.insert(aiHistory, {role = "user", content = text})
-			table.insert(aiHistory, {role = "assistant", content = aiText})
-			while #aiHistory > 6 do table.remove(aiHistory, 1) end
-			safe(true, aiText)
-			return true
-		end
-
-		if finish(tryLLM7(messages)) then return end
-		task.wait(0.2)
-		if finish(tryKeylessAI(messages)) then return end
-		task.wait(0.2)
-		if finish(tryPollinationsPOST(messages)) then return end
-		task.wait(0.2)
-		if finish(tryPollinationsGET(text)) then return end
-		task.wait(0.2)
-		if finish(tryKilo(messages)) then return end
-		task.wait(0.2)
-		if finish(tryUncloseai(messages)) then return end
-		safe(false, "⚠️ كل المزودين مشغولين")
-	end)
-end
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🎫 SUPPORT SYSTEM
--- ═══════════════════════════════════════════════════════════════════════
-local lastSeen = nil
-local primed = false
-local shownMessages = {}
-
-local function decodeMsg(res)
-	if not res then return nil, "no response" end
-	local okJ, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
-	if not okJ then return nil, "bad JSON" end
-	if res.StatusCode and res.StatusCode >= 400 then return nil, "HTTP " .. res.StatusCode end
-	return data
-end
-
-local function sendSupport(text, callback)
-	if not httpRequest then
-		if callback then callback(false, nil) end
-		return
-	end
-	task.spawn(function()
-		local ok, res = pcall(httpRequest, {
-			Url = MSG_URL, Method = "POST",
-			Headers = {
-				["Content-Type"] = "application/json",
-				["Authorization"] = "Bearer " .. API_KEY,
-			},
-			Body = HttpService:JSONEncode({
-				project_id = PROJECT_ID,
-				player_user_id = LocalPlayer.UserId,
-				player_name = LocalPlayer.Name,
-				message = text,
-			}),
-		})
-		if not ok then if callback then callback(false, nil) end return end
-		local data = decodeMsg(res)
-		if not data then if callback then callback(false, nil) end return end
-		if callback then callback(true, data) end
-	end)
-end
-
-local function labelSender(sender)
-	if sender == "owner" then return "👑 Owner"
-	elseif sender == "ai" then return "🤖 AI"
-	elseif sender == "player" or sender == "user" then return "👤 You" end
-	return "💬 Support"
-end
-
-local function pollSupportReplies()
-	if not httpRequest then return end
-	local url = MSG_URL .. "?project_id=" .. PROJECT_ID .. "&player_user_id=" .. LocalPlayer.UserId
-	if lastSeen then url = url .. "&since=" .. HttpService:UrlEncode(lastSeen) end
-	local ok, res = pcall(httpRequest, {
-		Url = url, Method = "GET",
-		Headers = {["Authorization"] = "Bearer " .. API_KEY},
-	})
-	if not ok then return end
-	local data = decodeMsg(res)
-	if not data or not data.messages then return end
-	for _, m in ipairs(data.messages) do
-		lastSeen = m.created_at
-		local msgId = m.id or m.created_at
-		if msgId and not shownMessages[msgId] and primed then
-			shownMessages[msgId] = true
-			notify(labelSender(m.sender), tostring(m.message))
-			if supChatFrame and supChatFrame.Visible and addSupChatBubble then
-				addSupChatBubble(m.sender or "support", m.message or "", msgId)
-			end
-		elseif msgId then
-			shownMessages[msgId] = true
-		end
-	end
-	primed = true
-end
-
--- ═══════════════════════════════════════════════════════════════════════
--- 💬 PLAYER-TO-PLAYER CHAT (الأصلي - يستخدم /chat endpoints)
--- ═══════════════════════════════════════════════════════════════════════
-local lastChatId = nil
-local pcChatSeen = {}
-
--- 🎯 إرسال رسالة لاعب (عام أو خاص)
-local function sendPlayerMessage(toUserId, message, callback)
-	if not httpRequest then
-		if callback then callback(false, "No HTTP") end
-		return false
-	end
-	task.spawn(function()
-		local ok, res = pcall(httpRequest, {
-			Url = CHAT_URL .. "/send",
-			Method = "POST",
-			Headers = {
-				["Content-Type"] = "application/json",
-				["Authorization"] = "Bearer " .. API_KEY,
-			},
-			Body = HttpService:JSONEncode({
-				project_id = PROJECT_ID,
-				key = Key,
-				from_user_id = LocalPlayer.UserId,
-				from_username = LocalPlayer.Name,
-				to_user_id = toUserId,
-				message = message,
-			}),
-		})
-		if not ok then
-			if callback then callback(false, "Request failed") end
-			return
-		end
-		local data, err = decodeMsg(res)
-		if not data then
-			if callback then callback(false, err or "Bad response") end
-			return
-		end
-		if callback then callback(true, nil) end
-	end)
-end
-
--- 🎯 استقبال الرسائل الجديدة
-local function getNewPlayerMessages()
-	if not httpRequest then return end
-	local url = CHAT_URL .. "/messages?project_id=" .. PROJECT_ID .. "&user_id=" .. LocalPlayer.UserId .. "&key=" .. HttpService:UrlEncode(Key)
-	if lastChatId then
-		url = url .. "&last_message_id=" .. lastChatId
-	end
-	local ok, res = pcall(httpRequest, {
-		Url = url, Method = "GET",
-		Headers = { ["Authorization"] = "Bearer " .. API_KEY },
-	})
-	if not ok then return end
-	local data = decodeMsg(res)
-	if not data then return end
-
-	local first = (lastChatId == nil)
-	for _, m in ipairs(data.messages or {}) do
-		local msgId = tostring(m.id or m.created_at or tick())
-		if pcChatSeen[msgId] then continue end
-		pcChatSeen[msgId] = true
-
-		if not first and m.from_user_id ~= LocalPlayer.UserId then
-			local isDM = (m.to_user_id ~= nil and m.to_user_id ~= 0)
-			local tag = isDM and "📩 DM من " or "💬 رسالة من "
-			notify(tag .. tostring(m.from_username), tostring(m.message))
-			if pcChatFrame and pcChatFrame.Visible and addPCChatBubble then
-				addPCChatBubble("them", tostring(m.from_username), tostring(m.message) .. (isDM and " (خاص)" or ""), msgId)
-			end
-		end
-	end
-	lastChatId = data.last_message_id
-end
-
--- ═══════════════════════════════════════════════════════════════════════
--- 💬 SUPPORT CHAT WINDOW
--- ═══════════════════════════════════════════════════════════════════════
-local supChatFrame = nil
-local supChatOpen = false
-local supMsgOrder = 0
-local supSending = false
-local addSupChatBubble
-
-local function openSupportChat()
-	if supChatOpen and supChatFrame then return end
-	supChatOpen = true
-
-	supChatFrame = Instance.new("Frame")
-	supChatFrame.Name = "AMT_SupportChat"
-	supChatFrame.Size = UDim2.new(0, 440, 0, 540)
-	supChatFrame.Position = UDim2.new(0.5, -220, 0.5, -270)
-	supChatFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 5)
-	supChatFrame.BorderSizePixel = 0
-	supChatFrame.Active = true
-	supChatFrame.Draggable = true
-	supChatFrame.Parent = NotifyGui
-	Instance.new("UICorner", supChatFrame).CornerRadius = UDim.new(0, 14)
-
-	local stroke = Instance.new("UIStroke", supChatFrame)
-	stroke.Color = Color3.fromRGB(255, 140, 0)
-	stroke.Thickness = 2
-
-	local header = Instance.new("Frame")
-	header.Size = UDim2.new(1, 0, 0, 50)
-	header.BackgroundColor3 = Color3.fromRGB(30, 15, 5)
-	header.BorderSizePixel = 0
-	header.Parent = supChatFrame
-	Instance.new("UICorner", header).CornerRadius = UDim.new(0, 14)
-
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -60, 1, 0)
-	title.Position = UDim2.new(0, 50, 0, 0)
-	title.BackgroundTransparency = 1
-	title.Text = "💬 الدعم (AI + Owner)"
-	title.TextColor3 = Color3.fromRGB(255, 140, 0)
-	title.TextSize = 17
-	title.Font = Enum.Font.GothamBold
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Parent = header
-
-	local icon = Instance.new("TextLabel")
-	icon.Size = UDim2.new(0, 50, 1, 0)
-	icon.BackgroundTransparency = 1
-	icon.Text = "💬"
-	icon.TextSize = 24
-	icon.Parent = header
-
-	local closeBtn = Instance.new("TextButton")
-	closeBtn.Size = UDim2.new(0, 40, 0, 40)
-	closeBtn.Position = UDim2.new(1, -45, 0, 5)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-	closeBtn.BorderSizePixel = 0
-	closeBtn.Text = "✕"
-	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeBtn.TextSize = 18
-	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.Parent = header
-	Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
-	closeBtn.MouseButton1Click:Connect(function()
-		supChatFrame:Destroy()
-		supChatFrame = nil
-		supChatOpen = false
-	end)
-
-	local scroll = Instance.new("ScrollingFrame")
-	scroll.Size = UDim2.new(1, -20, 1, -120)
-	scroll.Position = UDim2.new(0, 10, 0, 55)
-	scroll.BackgroundColor3 = Color3.fromRGB(24, 14, 6)
-	scroll.BorderSizePixel = 0
-	scroll.ScrollBarThickness = 6
-	scroll.ScrollBarImageColor3 = Color3.fromRGB(255, 140, 0)
-	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	scroll.Parent = supChatFrame
-	Instance.new("UICorner", scroll).CornerRadius = UDim.new(0, 10)
-
-	local list = Instance.new("UIListLayout")
-	list.SortOrder = Enum.SortOrder.LayoutOrder
-	list.Padding = UDim.new(0, 6)
-	list.Parent = scroll
-
-	local padding = Instance.new("UIPadding", scroll)
-	padding.PaddingTop = UDim.new(0, 8)
-	padding.PaddingBottom = UDim.new(0, 8)
-	padding.PaddingLeft = UDim.new(0, 8)
-	padding.PaddingRight = UDim.new(0, 8)
-
-	addSupChatBubble = function(sender, text, msgId)
-		if msgId and shownMessages["sup_" .. msgId] then return end
-		if msgId then shownMessages["sup_" .. msgId] = true end
-		supMsgOrder = supMsgOrder + 1
-
-		local isUser = (sender == "player" or sender == "user")
-		local isAI = (sender == "ai" or sender == "bot")
-		local isOwner = (sender == "owner")
-
-		local container = Instance.new("Frame")
-		container.Size = UDim2.new(1, 0, 0, 0)
-		container.AutomaticSize = Enum.AutomaticSize.Y
-		container.BackgroundTransparency = 1
-		container.LayoutOrder = supMsgOrder
-		container.Parent = scroll
-
-		local bubble = Instance.new("TextLabel")
-		if isUser then bubble.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-		elseif isAI then bubble.BackgroundColor3 = Color3.fromRGB(60, 35, 15)
-		elseif isOwner then bubble.BackgroundColor3 = Color3.fromRGB(200, 100, 40)
-		else bubble.BackgroundColor3 = Color3.fromRGB(45, 25, 10) end
-		bubble.TextColor3 = Color3.fromRGB(255, 255, 255)
-		bubble.TextSize = 13
-		bubble.Font = Enum.Font.Gotham
-		bubble.TextWrapped = true
-		bubble.TextXAlignment = Enum.TextXAlignment.Left
-		bubble.TextYAlignment = Enum.TextYAlignment.Top
-		local prefix = isUser and "👤 أنت: " or (isAI and "🤖 AI: " or (isOwner and "👑 Owner: " or "💬: "))
-		bubble.Text = prefix .. tostring(text)
-		bubble.Size = UDim2.new(0.8, 0, 0, 0)
-		bubble.AutomaticSize = Enum.AutomaticSize.XY
-		bubble.Position = isUser and UDim2.new(0.2, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
-		local pad = Instance.new("UIPadding", bubble)
-		pad.PaddingTop = UDim.new(0, 8)
-		pad.PaddingBottom = UDim.new(0, 8)
-		pad.PaddingLeft = UDim.new(0, 10)
-		pad.PaddingRight = UDim.new(0, 10)
-		Instance.new("UICorner", bubble).CornerRadius = UDim.new(0, 10)
-		bubble.Parent = container
-		task.wait()
-		scroll.CanvasPosition = Vector2.new(0, scroll.AbsoluteCanvasSize.Y)
-	end
-
-	local inputBox = Instance.new("Frame")
-	inputBox.Size = UDim2.new(1, -20, 0, 50)
-	inputBox.Position = UDim2.new(0, 10, 1, -60)
-	inputBox.BackgroundColor3 = Color3.fromRGB(30, 15, 5)
-	inputBox.BorderSizePixel = 0
-	inputBox.Parent = supChatFrame
-	Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 10)
-
-	local input = Instance.new("TextBox")
-	input.Size = UDim2.new(1, -70, 1, -10)
-	input.Position = UDim2.new(0, 5, 0, 5)
-	input.BackgroundColor3 = Color3.fromRGB(40, 20, 8)
-	input.BorderSizePixel = 0
-	input.Text = ""
-	input.PlaceholderText = "اكتب رسالتك للدعم..."
-	input.PlaceholderColor3 = Color3.fromRGB(180, 120, 60)
-	input.TextColor3 = Color3.fromRGB(255, 255, 255)
-	input.TextSize = 14
-	input.Font = Enum.Font.Gotham
-	input.TextXAlignment = Enum.TextXAlignment.Left
-	input.ClearTextOnFocus = false
-	input.Parent = inputBox
-	Instance.new("UICorner", input).CornerRadius = UDim.new(0, 8)
-
-	local sendBtn = Instance.new("TextButton")
-	sendBtn.Size = UDim2.new(0, 50, 1, -10)
-	sendBtn.Position = UDim2.new(1, -55, 0, 5)
-	sendBtn.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-	sendBtn.BorderSizePixel = 0
-	sendBtn.Text = "➤"
-	sendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	sendBtn.TextSize = 18
-	sendBtn.Font = Enum.Font.GothamBold
-	sendBtn.Parent = inputBox
-	Instance.new("UICorner", sendBtn).CornerRadius = UDim.new(0, 8)
-
-	local function sendChatMessage()
-		if supSending then return end
-		local text = input.Text:gsub("^%s+", ""):gsub("%s+$", "")
-		if text == "" then return end
-		supSending = true
-		sendBtn.Text = "⏳"
-		input.Text = ""
-		addSupChatBubble("player", text, nil)
-
-		sendSupport(text, function(success, data)
-			supSending = false
-			sendBtn.Text = "➤"
-			if not success then
-				addSupChatBubble("ai", "⚠️ فشل الاتصال، جرب مرة ثانية", nil)
-				return
-			end
-			if data and data.replies then
-				for _, r in ipairs(data.replies) do
-					local sender = r.sender or "ai"
-					local msgId = r.id or r.created_at or (tostring(sender) .. tostring(r.message))
-					addSupChatBubble(sender, r.message or "", msgId)
-				end
-			end
-			if data and data.reply then addSupChatBubble("ai", data.reply, nil) end
-			if data and data.response then addSupChatBubble("ai", data.response, nil) end
-		end)
-	end
-
-	sendBtn.MouseButton1Click:Connect(sendChatMessage)
-	input.FocusLost:Connect(function(e) if e then sendChatMessage() end end)
-
-	addSupChatBubble("ai", "أهلاً " .. LocalPlayer.Name .. "! 👋 اسألني أي شي أو اكتب مشكلتك للإدارة.", nil)
-
-	task.spawn(function()
-		if not httpRequest then return end
-		local url = MSG_URL .. "?project_id=" .. PROJECT_ID .. "&player_user_id=" .. LocalPlayer.UserId
-		local ok, res = pcall(httpRequest, {Url = url, Method = "GET", Headers = {["Authorization"] = "Bearer " .. API_KEY}})
-		if ok and res then
-			local data = decodeMsg(res)
-			if data and data.messages then
-				for _, m in ipairs(data.messages) do
-					local msgId = m.id or m.created_at
-					if m.created_at then lastSeen = m.created_at end
-					if msgId then addSupChatBubble(m.sender or "ai", m.message or "", msgId) end
-				end
-			end
-		end
-	end)
-end
-
--- ═══════════════════════════════════════════════════════════════════════
--- 💬 PLAYER CHAT WINDOW
--- ═══════════════════════════════════════════════════════════════════════
-local pcChatFrame = nil
-local pcChatOpen = false
-local pcMsgOrder = 0
-local pcSending = false
-local addPCChatBubble
-
-local function openPlayerChat()
-	if pcChatOpen and pcChatFrame then return end
-	pcChatOpen = true
-
-	pcChatFrame = Instance.new("Frame")
-	pcChatFrame.Name = "AMT_PlayerChat"
-	pcChatFrame.Size = UDim2.new(0, 440, 0, 560)
-	pcChatFrame.Position = UDim2.new(0.5, -220, 0.5, -280)
-	pcChatFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 5)
-	pcChatFrame.BorderSizePixel = 0
-	pcChatFrame.Active = true
-	pcChatFrame.Draggable = true
-	pcChatFrame.Parent = NotifyGui
-	Instance.new("UICorner", pcChatFrame).CornerRadius = UDim.new(0, 14)
-
-	local stroke = Instance.new("UIStroke", pcChatFrame)
-	stroke.Color = Color3.fromRGB(255, 180, 60)
-	stroke.Thickness = 2
-
-	local header = Instance.new("Frame")
-	header.Size = UDim2.new(1, 0, 0, 50)
-	header.BackgroundColor3 = Color3.fromRGB(35, 20, 5)
-	header.BorderSizePixel = 0
-	header.Parent = pcChatFrame
-	Instance.new("UICorner", header).CornerRadius = UDim.new(0, 14)
-
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -60, 1, 0)
-	title.Position = UDim2.new(0, 50, 0, 0)
-	title.BackgroundTransparency = 1
-	title.Text = "💬 محادثة اللاعبين"
-	title.TextColor3 = Color3.fromRGB(255, 180, 60)
-	title.TextSize = 17
-	title.Font = Enum.Font.GothamBold
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Parent = header
-
-	local icon = Instance.new("TextLabel")
-	icon.Size = UDim2.new(0, 50, 1, 0)
-	icon.BackgroundTransparency = 1
-	icon.Text = "💬"
-	icon.TextSize = 24
-	icon.Parent = header
-
-	local closeBtn = Instance.new("TextButton")
-	closeBtn.Size = UDim2.new(0, 40, 0, 40)
-	closeBtn.Position = UDim2.new(1, -45, 0, 5)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-	closeBtn.BorderSizePixel = 0
-	closeBtn.Text = "✕"
-	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeBtn.TextSize = 18
-	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.Parent = header
-	Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
-	closeBtn.MouseButton1Click:Connect(function()
-		pcChatFrame:Destroy()
-		pcChatFrame = nil
-		pcChatOpen = false
-	end)
-
-	local idBox = Instance.new("Frame")
-	idBox.Size = UDim2.new(1, -20, 0, 40)
-	idBox.Position = UDim2.new(0, 10, 0, 55)
-	idBox.BackgroundColor3 = Color3.fromRGB(30, 18, 8)
-	idBox.BorderSizePixel = 0
-	idBox.Parent = pcChatFrame
-	Instance.new("UICorner", idBox).CornerRadius = UDim.new(0, 8)
-
-	local idInput = Instance.new("TextBox")
-	idInput.Size = UDim2.new(1, -20, 1, 0)
-	idInput.Position = UDim2.new(0, 10, 0, 0)
-	idInput.BackgroundTransparency = 1
-	idInput.Text = ""
-	idInput.PlaceholderText = "🎯 UserId (فاضي = غرفة عامة)"
-	idInput.PlaceholderColor3 = Color3.fromRGB(180, 120, 60)
-	idInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-	idInput.TextSize = 13
-	idInput.Font = Enum.Font.Gotham
-	idInput.TextXAlignment = Enum.TextXAlignment.Left
-	idInput.ClearTextOnFocus = false
-	idInput.Parent = idBox
-
-	local scroll = Instance.new("ScrollingFrame")
-	scroll.Size = UDim2.new(1, -20, 1, -220)
-	scroll.Position = UDim2.new(0, 10, 0, 105)
-	scroll.BackgroundColor3 = Color3.fromRGB(24, 14, 6)
-	scroll.BorderSizePixel = 0
-	scroll.ScrollBarThickness = 6
-	scroll.ScrollBarImageColor3 = Color3.fromRGB(255, 180, 60)
-	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	scroll.Parent = pcChatFrame
-	Instance.new("UICorner", scroll).CornerRadius = UDim.new(0, 10)
-
-	local list = Instance.new("UIListLayout")
-	list.SortOrder = Enum.SortOrder.LayoutOrder
-	list.Padding = UDim.new(0, 6)
-	list.Parent = scroll
-
-	local padding = Instance.new("UIPadding", scroll)
-	padding.PaddingTop = UDim.new(0, 8)
-	padding.PaddingBottom = UDim.new(0, 8)
-	padding.PaddingLeft = UDim.new(0, 8)
-	padding.PaddingRight = UDim.new(0, 8)
-
-	addPCChatBubble = function(sender, name, text, msgId)
-		if msgId and pcChatSeen["ui_" .. msgId] then return end
-		if msgId then pcChatSeen["ui_" .. msgId] = true end
-		pcMsgOrder = pcMsgOrder + 1
-
-		local isMe = (sender == "me")
-		local isSys = (sender == "system")
-
-		local container = Instance.new("Frame")
-		container.Size = UDim2.new(1, 0, 0, 0)
-		container.AutomaticSize = Enum.AutomaticSize.Y
-		container.BackgroundTransparency = 1
-		container.LayoutOrder = pcMsgOrder
-		container.Parent = scroll
-
-		local bubble = Instance.new("TextLabel")
-		if isMe then bubble.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-		elseif isSys then bubble.BackgroundColor3 = Color3.fromRGB(80, 40, 20)
-		else bubble.BackgroundColor3 = Color3.fromRGB(50, 30, 12) end
-		bubble.TextColor3 = Color3.fromRGB(255, 255, 255)
-		bubble.TextSize = 13
-		bubble.Font = Enum.Font.Gotham
-		bubble.TextWrapped = true
-		bubble.TextXAlignment = Enum.TextXAlignment.Left
-		bubble.TextYAlignment = Enum.TextYAlignment.Top
-		local prefix
-		if isMe then prefix = "👤 أنت: "
-		elseif isSys then prefix = "⚙️ "
-		else prefix = "💬 " .. tostring(name) .. ": " end
-		bubble.Text = prefix .. tostring(text)
-		bubble.Size = UDim2.new(0.8, 0, 0, 0)
-		bubble.AutomaticSize = Enum.AutomaticSize.XY
-		bubble.Position = isMe and UDim2.new(0.2, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
-		local pad = Instance.new("UIPadding", bubble)
-		pad.PaddingTop = UDim.new(0, 8)
-		pad.PaddingBottom = UDim.new(0, 8)
-		pad.PaddingLeft = UDim.new(0, 10)
-		pad.PaddingRight = UDim.new(0, 10)
-		Instance.new("UICorner", bubble).CornerRadius = UDim.new(0, 10)
-		bubble.Parent = container
-		task.wait()
-		scroll.CanvasPosition = Vector2.new(0, scroll.AbsoluteCanvasSize.Y)
-	end
-
-	local inputBox = Instance.new("Frame")
-	inputBox.Size = UDim2.new(1, -20, 0, 50)
-	inputBox.Position = UDim2.new(0, 10, 1, -60)
-	inputBox.BackgroundColor3 = Color3.fromRGB(30, 15, 5)
-	inputBox.BorderSizePixel = 0
-	inputBox.Parent = pcChatFrame
-	Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 10)
-
-	local input = Instance.new("TextBox")
-	input.Size = UDim2.new(1, -70, 1, -10)
-	input.Position = UDim2.new(0, 5, 0, 5)
-	input.BackgroundColor3 = Color3.fromRGB(40, 20, 8)
-	input.BorderSizePixel = 0
-	input.Text = ""
-	input.PlaceholderText = "اكتب رسالتك..."
-	input.PlaceholderColor3 = Color3.fromRGB(180, 120, 60)
-	input.TextColor3 = Color3.fromRGB(255, 255, 255)
-	input.TextSize = 14
-	input.Font = Enum.Font.Gotham
-	input.TextXAlignment = Enum.TextXAlignment.Left
-	input.ClearTextOnFocus = false
-	input.Parent = inputBox
-	Instance.new("UICorner", input).CornerRadius = UDim.new(0, 8)
-
-	local sendBtn = Instance.new("TextButton")
-	sendBtn.Size = UDim2.new(0, 50, 1, -10)
-	sendBtn.Position = UDim2.new(1, -55, 0, 5)
-	sendBtn.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-	sendBtn.BorderSizePixel = 0
-	sendBtn.Text = "➤"
-	sendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	sendBtn.TextSize = 18
-	sendBtn.Font = Enum.Font.GothamBold
-	sendBtn.Parent = inputBox
-	Instance.new("UICorner", sendBtn).CornerRadius = UDim.new(0, 8)
-
-	local function sendMsg()
-		if pcSending then return end
-		local text = input.Text:gsub("^%s+", ""):gsub("%s+$", "")
-		if text == "" then return end
-		local targetId = tonumber(idInput.Text)
-		pcSending = true
-		sendBtn.Text = "⏳"
-		input.Text = ""
-		addPCChatBubble("me", LocalPlayer.Name, text .. (targetId and (" → " .. targetId) or " (عام)"), nil)
-
-		sendPlayerMessage(targetId, text, function(ok, err)
-			pcSending = false
-			sendBtn.Text = "➤"
-			if ok then
-				addPCChatBubble("system", "", "✅ تم الإرسال" .. (targetId and " (خاص)" or " (عام)"), nil)
-			else
-				addPCChatBubble("system", "", "⚠️ فشل: " .. tostring(err), nil)
-			end
-		end)
-	end
-
-	sendBtn.MouseButton1Click:Connect(sendMsg)
-	input.FocusLost:Connect(function(e) if e then sendMsg() end end)
-
-	addPCChatBubble("system", "", "أهلاً " .. LocalPlayer.Name .. " 👋\nUserId فاضي = غرفة عامة | UserId موجود = رسالة خاصة", nil)
-end
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🔄 POLLING LOOPS
--- ═══════════════════════════════════════════════════════════════════════
-task.spawn(function()
-	while true do
-		task.wait(5)
-		pcall(pollSupportReplies)
-	end
-end)
-
-task.spawn(function()
-	while true do
-		task.wait(2)
-		pcall(getNewPlayerMessages)
-	end
-end)
-
--- ═══════════════════════════════════════════════════════════════════════
--- 🎨 BUILD MAIN UI (WindUI مع KeySystem)
--- ═══════════════════════════════════════════════════════════════════════
-task.spawn(function()
-	task.wait(1)
-
-	local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
-
-	local Window = WindUI:CreateWindow({
-		Title = "🎃 AMT MEGA v39",
-		Icon = "crown",
-		Author = "by AMT Team 🎃",
-		Folder = "AMTMegaHub",
-		Size = UDim2.fromOffset(620, 540),
-		Theme = "Dark",
-		Transparent = true,
-		Resizable = true,
-		OpenButton = {
-			Title = "🎃 افتح القائمة",
-			Icon = "mouse-pointer-click",
-			CornerRadius = UDim.new(0, 16),
-			Color = ColorSequence.new(Color3.fromRGB(255, 140, 0), Color3.fromRGB(20, 20, 20)),
-			OnlyMobile = false,
-		},
-		KeySystem = {
-			Title = "🎃 AMT MEGA - تفعيل",
-			Note = "أدخل مفتاح التفعيل للمتابعة",
-			SaveKey = true,
-			URL = GET_KEY_URL,
-			KeyValidator = function(key)
-				local valid, message, info = verifyKey(key)
-
-				if info and info.status == "killed" then
-					LocalPlayer:Kick("⛔ " .. tostring(info.message))
-					return false
-				elseif info and info.status == "maintenance" then
-					LocalPlayer:Kick("🛠️ Maintenance: " .. tostring(info.message))
-					return false
-				elseif info and info.status == "executor_blocked" then
-					LocalPlayer:Kick("🚫 " .. tostring(info.message))
-					return false
-				end
-
-				if valid then
-					saveKey(key)
-					_G.AMT_KEY = key
-					Key = key  -- 🔥 نحفظه في متغير الـ Chat
-					WindUI:Notify({Title = "✅ تم التفعيل", Content = tostring(message), Duration = 4, Icon = "check-circle"})
-					task.wait(2)
-					pollSupportReplies()
-					return true
-				else
-					WindUI:Notify({Title = "❌ مفتاح خاطئ", Content = tostring(message), Duration = 4, Icon = "x-circle"})
-					return false
-				end
-			end,
-		},
-	})
-
-	local function wNotify(title, text)
-		if not _G.AMT.ShowNotifications then return end
-		WindUI:Notify({Title = tostring(title), Content = tostring(text), Duration = _G.AMT.NotificationDuration or 5, Icon = "check-circle"})
-	end
-
-	-- 🌾 Auto Farm
-	local FarmTab = Window:Tab({ Title = "🌾 Auto Farm", Icon = "wheat" })
-	FarmTab:Section({ Title = "🎃 فارم العملات" })
-	FarmTab:Toggle({Title = "🎃 تشغيل الفارم", Default = false, Callback = function(state)
-		_G.AMT.AutoEnabled = state
-		if state then
-			_G.AMT.AutoEngageKilling = false
-			_G.AMT.AutoEngageKilled = false
-			SafeBlock.Position = Vector3.new(0, 99999, 0)
-			task.spawn(farmLoop)
-			wNotify("🎃", "الفارم شغال")
-		else
-			if CurrentTween then CurrentTween:Cancel(); CurrentTween = nil end
-			Platform.CFrame = CFrame.new(0, 99999, 0)
-			unfreezeAll()
-			wNotify("🖤", "توقف")
-		end
-	end})
-	FarmTab:Slider({Title = "⚡ السرعة", Step = 1, Value = {Min = 5, Max = 100, Default = 35}, Callback = function(v) _G.AMT.SpeedValue = v end})
-	FarmTab:Divider()
-	FarmTab:Section({ Title = "🎯 Auto Engage" })
-	FarmTab:Toggle({Title = "🎃 ذبح تلقائي + بلوكة أمان", Default = true, Callback = function(s)
-		_G.AMT.AutoEngageEnabled = s
-		if not s then _G.AMT.AutoEngageKilling = false; SafeBlock.Position = Vector3.new(0, 99999, 0) end
-		wNotify(s and "🎃" or "🖤", "Auto Engage " .. (s and "شغال" or "موقف"))
-	end})
-	FarmTab:Divider()
-	local FarmStatus = FarmTab:Paragraph({Title = "📊 حالة", Desc = "..."})
-	task.spawn(function()
-		while true do
-			task.wait(1)
-			pcall(function()
-				local mode = "🖤 متوقف"
-				if _G.AMT.AutoEngageKilling then mode = "🔥 يذبح!"
-				elseif _G.AMT.AutoEnabled then mode = "🎃 شغال" end
-				FarmStatus:SetDesc("🎃 " .. mode .. "\n💎 " .. _G.AMT.CollectedCoins .. "/" .. _G.AMT.TargetCoins .. "\n🎭 " .. _G.AMT.MyRole)
-			end)
-		end
-	end)
-	FarmTab:Button({Title = "🔥 Instant Kill All", Icon = "zap", Callback = function()
-		if _G.AMT.MyRole ~= "Murderer" then wNotify("⚠️", "لازم القاتل") return end
-		pcall(pullAllPlayers); task.wait(0.3)
-		pcall(equipKnife); task.wait(0.2)
-		pcall(attackAll); task.wait(0.2)
-		pcall(killWithRemote); task.wait(0.5)
-		pcall(unfreezeAll)
-		wNotify("💀", "تم!")
-	end})
-
-	-- 📊 Dashboard
-	local DashTab = Window:Tab({ Title = "Dashboard", Icon = "layout-dashboard" })
-	DashTab:Section({ Title = "👤 معلوماتك" })
-	local UserInfo = DashTab:Paragraph({Title = "👤", Desc = "..."})
-	task.spawn(function()
-		while true do
-			task.wait(1)
-			local char = LocalPlayer.Character
-			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			local hrp = char and char:FindFirstChild("HumanoidRootPart")
-			local rd = RANK_DATA[MY_RANK] or RANK_DATA.Member
-			local posText = hrp and (math.floor(hrp.Position.X) .. "," .. math.floor(hrp.Position.Y) .. "," .. math.floor(hrp.Position.Z)) or "?"
-			local hpText = hum and (math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)) or "?"
-			pcall(function()
-				UserInfo:SetDesc("👤 " .. LocalPlayer.DisplayName .. "\n🎃 " .. rd.emoji .. " " .. MY_RANK .. "\n🎭 " .. _G.AMT.MyRole .. "\n❤️ " .. hpText .. "\n📍 " .. posText)
-			end)
-		end
-	end)
-
-	-- 👁️ ESP
-	local ESPTab = Window:Tab({ Title = "ESP", Icon = "eye" })
-	ESPTab:Section({ Title = "👁️ ESP اللاعبين" })
-	ESPTab:Toggle({Title = "👁️ ESP اللاعبين", Default = false, Callback = function(state)
-		_G.AMT.ESPPlayers = state
-		if state then
-			for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
-		else
-			for p, _ in pairs(ESPObjects) do removeESP(p) end
-		end
-	end})
-	ESPTab:Toggle({Title = "🎭 ESP الأدوار", Default = false, Callback = function(s) _G.AMT.ESPRoles = s end})
-	ESPTab:Toggle({Title = "📝 ESP الأسماء", Default = false, Callback = function(s) _G.AMT.ESPNames = s end})
-	ESPTab:Toggle({Title = "❤️ ESP الصحة", Default = false, Callback = function(s) _G.AMT.ESPHealth = s end})
-	ESPTab:Toggle({Title = "📏 ESP المسافة", Default = false, Callback = function(s) _G.AMT.ESPDistance = s end})
-	ESPTab:Toggle({Title = "🔧 ESP الأسلحة", Default = false, Callback = function(s) _G.AMT.ESPWeapons = s end})
-	ESPTab:Divider()
-	ESPTab:Section({ Title = "🏷️ Head Tags" })
-	ESPTab:Toggle({Title = "⭐ Head Tags", Default = true, Callback = function(state) _G.AMT.ESPVIPTags = state end})
-	ESPTab:Button({Title = "🔄 إعادة تحميل", Icon = "refresh-cw", Callback = function()
-		for p, _ in pairs(HeadTags) do removeHeadTag(p) end
-		refreshHeadTags()
-		wNotify("⭐", "تم")
-	end})
-	ESPTab:Divider()
-	ESPTab:Toggle({Title = "💰 ESP العملات", Default = false, Callback = function(s) _G.AMT.ESPCoins = s end})
-
-	-- ⚔️ Combat
-	local CombatTab = Window:Tab({ Title = "Combat", Icon = "sword" })
-	CombatTab:Section({ Title = "🎯 Aimbot على القاتل" })
-	CombatTab:Toggle({Title = "🎯 تفعيل Aimbot", Default = false, Callback = function(s) _G.AMT.AimbotMurderer = s end})
-	CombatTab:Slider({Title = "🎯 السلاسة", Step = 0.05, Value = {Min = 0.05, Max = 0.9, Default = 0.25}, Callback = function(v) _G.AMT.AimbotSmooth = v end})
-	CombatTab:Divider()
-	CombatTab:Section({ Title = "💀 Kill Aura" })
-	CombatTab:Toggle({Title = "💀 Kill Aura", Default = false, Callback = function(s) _G.AMT.KillAura = s end})
-	CombatTab:Slider({Title = "📏 المدى", Step = 1, Value = {Min = 5, Max = 50, Default = 15}, Callback = function(v) _G.AMT.KillAuraRange = v end})
-	CombatTab:Divider()
-	CombatTab:Section({ Title = "📦 Hitbox" })
-	CombatTab:Slider({Title = "📦 الحجم", Step = 0.5, Value = {Min = 2, Max = 15, Default = 2}, Callback = function(v)
-		_G.AMT.HitboxSize = v
-		for _, p in ipairs(Players:GetPlayers()) do
-			if p ~= LocalPlayer and p.Character then
-				for _, part in ipairs(p.Character:GetDescendants()) do
-					if part:IsA("BasePart") then pcall(function() part.Size = Vector3.new(v, v, v) end) end
-				end
-			end
-		end
-	end})
-
-	-- 👮 Sheriff
-	local SMTab = Window:Tab({ Title = "Sheriff", Icon = "crosshair" })
-	SMTab:Section({ Title = "👮 الشريف" })
-	SMTab:Toggle({Title = "🔫 Auto Grab Gun", Default = false, Callback = function(state)
-		_G.AMT.AutoGrabGun = state
-		wNotify(state and "🎃" or "🖤", "Auto Grab Gun " .. (state and "شغال" or "موقف"))
-	end})
-
-	-- 👤 Player
-	local ModsTab = Window:Tab({ Title = "Player", Icon = "person-standing" })
-	ModsTab:Section({ Title = "🏃 الحركة" })
-	ModsTab:Slider({Title = "🏃 Speed", Step = 1, Value = {Min = 16, Max = 500, Default = 16}, Callback = function(v)
-		local c = LocalPlayer.Character
-		if c and c:FindFirstChildOfClass("Humanoid") then c:FindFirstChildOfClass("Humanoid").WalkSpeed = v end
-	end})
-	ModsTab:Slider({Title = "🦘 Jump", Step = 1, Value = {Min = 50, Max = 500, Default = 50}, Callback = function(v)
-		local c = LocalPlayer.Character
-		if c and c:FindFirstChildOfClass("Humanoid") then c:FindFirstChildOfClass("Humanoid").JumpPower = v end
-	end})
-	ModsTab:Toggle({Title = "✈️ Fly", Default = false, Callback = function(s) toggleFly(s) end})
-	ModsTab:Divider()
-	ModsTab:Section({ Title = "🎁 ميزات إضافية" })
-	ModsTab:Toggle({Title = "🛡️ Anti-Fling", Default = false, Callback = function(s) _G.AMT.AntiFling = s end})
-	ModsTab:Toggle({Title = "👁️ X-Ray", Default = false, Callback = function(s)
-		local char = LocalPlayer.Character
-		if char then
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-					part.LocalTransparencyModifier = s and 0.5 or 0
-				end
-			end
-		end
-	end})
-	ModsTab:Toggle({Title = "👻 Invisible (اختفاء)", Default = false, Callback = function(state)
-		_G.AMT.Invisible = state
-		local char = LocalPlayer.Character
-		if not char then return end
-		for _, part in ipairs(char:GetDescendants()) do
-			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-				part.LocalTransparencyModifier = state and 1 or 0
-				part.Transparency = state and 1 or 0
-			end
-			if part:IsA("Decal") then part.Transparency = state and 1 or 0 end
-		end
-		if state then wNotify("👻", "أنت مخفي") else wNotify("✅", "ظاهر") end
-	end})
-	ModsTab:Toggle({Title = "💡 Full Bright", Default = false, Callback = function(s) setFullBright(s) end})
-	ModsTab:Button({Title = "🦅 Respawn فوري", Icon = "zap", Callback = function()
-		local char = LocalPlayer.Character
-		if char then
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			if hum then hum.Health = 0 end
-		end
-		task.wait(0.1)
-		LocalPlayer:LoadCharacter()
-	end})
-
-	-- 🌐 Teleport
-	local TPTab = Window:Tab({ Title = "Teleport", Icon = "map-pin" })
-	local targetPlayer = ""
-	TPTab:Input({Title = "👤 اسم اللاعب", Placeholder = "PlayerName", Callback = function(t) targetPlayer = t end})
-	TPTab:Button({Title = "🎯 اذهب للاعب", Icon = "target", Callback = function()
-		if targetPlayer == "" then wNotify("⚠️", "اكتب اسم") return end
-		local t = Players:FindFirstChild(targetPlayer)
-		if t and t.Character then
-			local hrp = t.Character:FindFirstChild("HumanoidRootPart")
-			local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-			if hrp and myHrp then myHrp.CFrame = hrp.CFrame * CFrame.new(0, 0, 3); wNotify("🎯", "تم!") end
-		end
-	end})
-	TPTab:Divider()
-	TPTab:Button({Title = "🔄 إعادة الدخول", Icon = "refresh-cw", Callback = function() rejoin() end})
-
-	-- 🤖 AI
-	local AITab = Window:Tab({ Title = "🤖 botayf AI", Icon = "bot" })
-	AITab:Section({ Title = "🤖 دردشة ذكية" })
-	AITab:Paragraph({Title = "💬", Desc = "اسأل botayf - ذكاء اصطناعي عربي"})
-	local quickQ = ""
-	AITab:Input({Title = "📝 سؤال", Placeholder = "اكتب سؤالك...", Callback = function(t) quickQ = t end})
-	AITab:Button({Title = "🚀 إرسال", Icon = "send", Callback = function()
-		if quickQ == "" then wNotify("⚠️", "اكتب سؤال") return end
-		wNotify("⏳ botayf", "جاري التفكير...")
-		askAI(quickQ, function(ok, reply) wNotify("🤖 botayf", reply) end)
-	end})
-	AITab:Button({Title = "🧹 مسح الذاكرة", Icon = "trash-2", Callback = function()
-		aiHistory = {}
-		wNotify("🧹", "تم")
-	end})
-
-	-- 💬 Support Chat
-	local SupportTab = Window:Tab({ Title = "💬 الدعم", Icon = "headphones" })
-	SupportTab:Section({ Title = "💬 الدعم (AI + Owner)" })
-	SupportTab:Paragraph({Title = "💡", Desc = "اسأل AI أو اكتب مشكلتك للإدارة"})
-	SupportTab:Button({Title = "💬 فتح شات الدعم", Icon = "message-circle", Callback = function()
-		openSupportChat()
-	end})
-	SupportTab:Button({Title = "🧹 مسح الشات", Icon = "trash-2", Callback = function()
-		shownMessages = {}
-		supMsgOrder = 0
-		if supChatFrame then
-			supChatFrame:Destroy()
-			supChatFrame = nil
-			supChatOpen = false
-		end
-		wNotify("🧹", "تم")
-	end})
-
-	-- 💬 Player Chat
-	local PCTab = Window:Tab({ Title = "💬 شات اللاعبين", Icon = "users" })
-	PCTab:Section({ Title = "💬 محادثة بين اللاعبين" })
-	PCTab:Paragraph({
-		Title = "💡 كيف يشتغل؟",
-		Desc = "• UserId فاضي = رسالة للغرفة العامة\n• UserId موجود = رسالة خاصة\n• كل من عنده السكربت يشوف الرسائل"
-	})
-	PCTab:Button({Title = "💬 فتح شات اللاعبين", Icon = "message-circle", Callback = function()
-		openPlayerChat()
-	end})
-	PCTab:Button({Title = "🧹 مسح الشات", Icon = "trash-2", Callback = function()
-		pcChatSeen = {}
-		pcMsgOrder = 0
-		if pcChatFrame then
-			pcChatFrame:Destroy()
-			pcChatFrame = nil
-			pcChatOpen = false
-		end
-		wNotify("🧹", "تم")
-	end})
-	PCTab:Divider()
-	PCTab:Section({ Title = "📝 إرسال سريع" })
-	local quickId = ""
-	local quickMsg = ""
-	PCTab:Input({Title = "🎯 UserId (فاضي = عام)", Placeholder = "123456789", Callback = function(t) quickId = t end})
-	PCTab:Input({Title = "💬 الرسالة", Placeholder = "اكتب رسالتك...", Callback = function(t) quickMsg = t end})
-	PCTab:Button({Title = "📤 إرسال", Icon = "send", Callback = function()
-		if quickMsg == "" then wNotify("⚠️", "اكتب رسالة") return end
-		local targetId = tonumber(quickId)
-		sendPlayerMessage(targetId, quickMsg, function(ok, err)
-			if ok then wNotify("✅", "تم الإرسال" .. (targetId and " (خاص)" or " (عام)"))
-			else wNotify("⚠️", "فشل: " .. tostring(err)) end
-		end)
-	end})
-
-	-- 👑 Owner Panel
-	if IS_HELPER then
-		local PanelTab = Window:Tab({ Title = "👑 Owner Panel", Icon = "crown" })
-		PanelTab:Section({ Title = "👤 رتبتك" })
-		PanelTab:Paragraph({
-			Title = "💎 رتبتك الحالية",
-			Desc = (RANK_DATA[MY_RANK] and RANK_DATA[MY_RANK].emoji or "🎫") .. " " .. MY_RANK .. " (Power: " .. MY_POWER .. ")"
-		})
-		PanelTab:Divider()
-		PanelTab:Section({ Title = "🎯 تغيير رتبة لاعب" })
-
-		local targetPlayerName = ""
-		local selectedRankName = "VIP"
-
-		PanelTab:Input({
-			Title = "👤 اسم اللاعب (Roblox Username)",
-			Placeholder = "مثال: AMTbadboy",
-			Callback = function(t) targetPlayerName = t end
-		})
-		PanelTab:Dropdown({
-			Title = "🏆 الرتبة",
-			Values = IS_OWNER and {"Owner", "CoOwner", "SrAdmin", "Admin", "SrMod", "Mod", "Helper", "Elite", "VIP", "Member"}
-				or (IS_COOWNER and {"SrAdmin", "Admin", "SrMod", "Mod", "Helper", "Elite", "VIP", "Member"}
-				or (IS_SRADMIN and {"Admin", "SrMod", "Mod", "Helper", "Elite", "VIP", "Member"}
-				or (IS_ADMIN and {"SrMod", "Mod", "Helper", "Elite", "VIP", "Member"}
-				or (IS_SRMOD and {"Mod", "Helper", "Elite", "VIP", "Member"}
-				or (IS_MOD and {"Helper", "Elite", "VIP", "Member"}
-				or {"Elite", "VIP", "Member"}))))),
-			Value = "VIP",
-			Callback = function(v) selectedRankName = v end
-		})
-
-		PanelTab:Button({Title = "✅ تعيين الرتبة", Icon = "check", Callback = function()
-			if targetPlayerName == "" then wNotify("⚠️", "اكتب اسم اللاعب") return end
-			local targetRankPower = RANK_POWER[selectedRankName] or 0
-			if MY_POWER < 100 and targetRankPower >= MY_POWER then
-				wNotify("🚫", "ما تقدر تعطي رتبة أعلى أو مساوية لك")
-				return
-			end
-			if getRank(targetPlayerName) == "Owner" and not IS_OWNER then
-				wNotify("🚫", "ما تقدر تلمس Owner")
-				return
-			end
-			RANKS[targetPlayerName] = selectedRankName
-			saveRanks()
-			if targetPlayerName == LocalPlayer.Name then updateMyRankVars(selectedRankName) end
-			task.spawn(function()
-				for i = 1, 3 do
-					broadcastSync("AMT_RANK::" .. targetPlayerName .. "::" .. selectedRankName)
-					task.wait(0.4)
-				end
-			end)
-			local t = Players:FindFirstChild(targetPlayerName)
-			if t then
-				removeHeadTag(t)
-				task.wait(0.2)
-				createHeadTag(t)
-			end
-			refreshHeadTags()
-			wNotify("🎃", targetPlayerName .. " → " .. selectedRankName)
-		end})
-
-		PanelTab:Divider()
-		PanelTab:Button({Title = "🗑️ تحويل إلى Member", Icon = "trash-2", Callback = function()
-			if targetPlayerName == "" then wNotify("⚠️", "اكتب اسم اللاعب") return end
-			if getRank(targetPlayerName) == "Owner" and not IS_OWNER then wNotify("🚫", "ما تقدر تلمس Owner") return end
-			if getPower(targetPlayerName) >= MY_POWER and not IS_OWNER then wNotify("🚫", "ما تقدر تنزل شخص أقوى") return end
-			RANKS[targetPlayerName] = "Member"
-			saveRanks()
-			if targetPlayerName == LocalPlayer.Name then updateMyRankVars("Member") end
-			task.spawn(function()
-				for i = 1, 3 do
-					broadcastSync("AMT_RANK::" .. targetPlayerName .. "::Member")
-					task.wait(0.4)
-				end
-			end)
-			local t = Players:FindFirstChild(targetPlayerName)
-			if t then removeHeadTag(t) end
-			refreshHeadTags()
-			wNotify("🔻", targetPlayerName .. " صار Member")
-		end})
-
-		PanelTab:Divider()
-		PanelTab:Section({ Title = "🚫 طرد لاعب" })
-		PanelTab:Button({Title = "🚫 طرد اللاعب", Icon = "ban", Callback = function()
-			if targetPlayerName == "" then wNotify("⚠️", "اكتب اسم اللاعب") return end
-			if getRank(targetPlayerName) == "Owner" and not IS_OWNER then wNotify("🚫", "ما تقدر تطرد Owner") return end
-			if getPower(targetPlayerName) >= MY_POWER and not IS_OWNER then wNotify("🚫", "ما تقدر تطرد شخص أقوى") return end
-			KICKED_USERS[targetPlayerName] = {
-				reason = "من الإدارة",
-				by = LocalPlayer.Name,
-				time = os.date("%Y-%m-%d %H:%M:%S"),
-			}
-			saveKicked()
-			task.spawn(function()
-				for i = 1, 5 do
-					broadcastSync("AMT_KICK::" .. targetPlayerName .. "::من الإدارة")
-					task.wait(0.4)
-				end
-			end)
-			local t = Players:FindFirstChild(targetPlayerName)
-			if t then pcall(function() t:Kick("🎃 تم طردك من AMT") end) end
-			wNotify("🚫", "تم الطرد: " .. targetPlayerName)
-		end})
-
-		PanelTab:Divider()
-		PanelTab:Section({ Title = "🔓 إلغاء الطرد" })
-		PanelTab:Button({Title = "🔓 إلغاء طرد اللاعب", Icon = "unlock", Callback = function()
-			if targetPlayerName == "" then wNotify("⚠️", "اكتب اسم اللاعب") return end
-			if KICKED_USERS[targetPlayerName] then
-				KICKED_USERS[targetPlayerName] = nil
-				saveKicked()
-				task.spawn(function()
-					for i = 1, 3 do
-						broadcastSync("AMT_UNKICK::" .. targetPlayerName)
-						task.wait(0.4)
-					end
-				end)
-				wNotify("✅", targetPlayerName .. " تم إلغاء طرده")
-			else
-				wNotify("⚠️", targetPlayerName .. " مو في قائمة المطرودين")
-			end
-		end})
-
-		PanelTab:Divider()
-		PanelTab:Section({ Title = "📋 قائمة المطرودين" })
-		local KickedList = PanelTab:Paragraph({Title = "🚫", Desc = "..."})
-		task.spawn(function()
-			while true do
-				task.wait(3)
-				local list = {}
-				for name, data in pairs(KICKED_USERS) do
-					table.insert(list, "🚫 " .. name .. " — " .. tostring(data.reason))
-				end
-				pcall(function()
-					KickedList:SetDesc(#list == 0 and "لا يوجد مطرودين" or table.concat(list, "\n"))
-				end)
-			end
-		end)
-
-		if IS_OWNER then
-			PanelTab:Button({Title = "✅ إلغاء طرد الكل", Icon = "check-circle", Callback = function()
-				for name, _ in pairs(KICKED_USERS) do
-					task.spawn(function()
-						for i = 1, 3 do
-							broadcastSync("AMT_UNKICK::" .. name)
-							task.wait(0.3)
-						end
-					end)
-				end
-				KICKED_USERS = {}
-				saveKicked()
-				wNotify("✅", "تم مسح قائمة المطرودين")
-			end})
-		end
-
-		PanelTab:Divider()
-		PanelTab:Section({ Title = "📋 قائمة الرتب" })
-		local RankList = PanelTab:Paragraph({Title = "👥", Desc = "..."})
-		task.spawn(function()
-			while true do
-				task.wait(2)
-				local lines = {}
-				local sorted = {}
-				for name, rank in pairs(RANKS) do
-					table.insert(sorted, {name = name, rank = rank, power = RANK_POWER[rank] or 0})
-				end
-				table.sort(sorted, function(a, b) return a.power > b.power end)
-				for _, entry in ipairs(sorted) do
-					local rd = RANK_DATA[entry.rank]
-					local online = Players:FindFirstChild(entry.name) and " 🟢" or " ⚪"
-					table.insert(lines, (rd and rd.emoji or "❔") .. " " .. entry.rank .. " | " .. entry.name .. online)
-				end
-				pcall(function()
-					RankList:SetDesc(#lines == 0 and "لا يوجد" or table.concat(lines, "\n"))
-				end)
-			end
-		end)
-	end
-
-	-- ⚙️ Settings
-	local SetTab = Window:Tab({ Title = "Settings", Icon = "settings" })
-	SetTab:Section({ Title = "🎨 تخصيص" })
-	SetTab:Slider({Title = "📏 مدة الإشعارات", Step = 1, Value = {Min = 2, Max = 15, Default = 5}, Callback = function(v) _G.AMT.NotificationDuration = v end})
-	SetTab:Toggle({Title = "🔔 الإشعارات", Default = true, Callback = function(s) _G.AMT.ShowNotifications = s end})
-	SetTab:Divider()
-	SetTab:Button({Title = "🖤 Dark", Callback = function() Window:SetTheme("Dark"); wNotify("🎃", "Dark") end})
-	SetTab:Button({Title = "🎃 Light", Callback = function() Window:SetTheme("Light"); wNotify("🎃", "Light") end})
-
-	-- ℹ️ Info
-	local InfoTab = Window:Tab({ Title = "Info", Icon = "info" })
-	InfoTab:Section({ Title = "📋 معلومات" })
-	InfoTab:Paragraph({Title = "👤", Desc = LocalPlayer.Name .. "\nID: " .. LocalPlayer.UserId})
-	local rd = RANK_DATA[MY_RANK] or RANK_DATA.Member
-	InfoTab:Paragraph({Title = "🎃 الرتبة", Desc = rd.emoji .. " " .. MY_RANK .. " (Power: " .. MY_POWER .. ")"})
-	InfoTab:Paragraph({Title = "💬 Support", Desc = "✅ AI + Owner"})
-	InfoTab:Paragraph({Title = "💬 Player Chat", Desc = "✅ عام + خاص"})
-	InfoTab:Paragraph({Title = "📅 الإصدار", Desc = "v39.0.0"})
-
-	notify("🎃 AMT MEGA v39.0", "كل الميزات جاهزة!")
-end)
-
--- ═══════════════════════════════════════════════════════════════════════
--- 📡 REMOTE EVENTS
--- ═══════════════════════════════════════════════════════════════════════
-pcall(function()
-	RS.Remotes.Gameplay.RoundStart.OnClientEvent:Connect(function(time, playersData)
-		if type(playersData) == "table" then
-			for name, info in pairs(playersData) do applyRoleFromData(name, info) end
-		end
-		_G.AMT.RoundActive = true
-		_G.AMT.CollectedCoins = 0
-		_G.AMT.AutoEngageKilled = false
-		_G.AMT.AutoEngageKilling = false
-		CollectedCoinObjects = {}
-	end)
-end)
-
-pcall(function()
-	RS.Remotes.Gameplay.CoinCollected.OnClientEvent:Connect(function(coinType, collected, total, extra)
-		_G.AMT.CollectedCoins = collected
-		_G.AMT.TargetCoins = total
-	end)
-end)
-
-pcall(function()
-	RS.Remotes.Gameplay.RoundEndFade.OnClientEvent:Connect(function()
-		_G.AMT.RoundActive = false
-		RoleData = {}
-		_G.AMT.MyRole = "Unknown"
-		_G.AMT.AutoEngageKilled = false
-		_G.AMT.AutoEngageKilling = false
-		if CurrentTween then CurrentTween:Cancel(); CurrentTween = nil end
-		Platform.CFrame = CFrame.new(0, 99999, 0)
-		SafeBlock.Position = Vector3.new(0, 99999, 0)
-		unfreezeAll()
-	end)
-end)
-
-UIS.InputBegan:Connect(function(input, gp)
-	if gp then return end
-	if input.KeyCode == Enum.KeyCode.RightShift then
-		_G.AMT.AutoEnabled = not _G.AMT.AutoEnabled
-		if _G.AMT.AutoEnabled then
-			_G.AMT.AutoEngageKilling = false
-			_G.AMT.AutoEngageKilled = false
-			SafeBlock.Position = Vector3.new(0, 99999, 0)
-			task.spawn(farmLoop)
-		else
-			if CurrentTween then CurrentTween:Cancel(); CurrentTween = nil end
-			Platform.CFrame = CFrame.new(0, 99999, 0)
-			unfreezeAll()
-		end
-	end
-end)
-
--- ═══ Export ═══
-getgenv().AMTMegaHub = {
-	notify = notify,
-	askAI = askAI,
-	getRank = getRank,
-	myRank = MY_RANK,
-	sendSupport = sendSupport,
-	openSupportChat = openSupportChat,
-	openPlayerChat = openPlayerChat,
-	sendPlayerMessage = sendPlayerMessage,
-}
-
-print("✅ AMT MEGA v39.0 Loaded 🎃")
-print("🔑 Key: " .. (loadKey() and "محفوظ" or "غير محفوظ"))
-print("💬 Player Chat: /chat endpoints")
+pcall(function() RS.Remotes.Gameplay.RoundStart.OnClientEvent:Connect(function(t,pd) if type(pd)=="table" then for n,i in pairs(pd) do applyRole(n,i) end end A.RoundActive=true A.CollectedCoins=0 A.AutoEngageKilled=false A.AutoEngageKilling=false CCO={} end) end)
+pcall(function() RS.Remotes.Gameplay.CoinCollected.OnClientEvent:Connect(function(ct,c,t,e) A.CollectedCoins=c A.TargetCoins=t end) end)
+pcall(function() RS.Remotes.Gameplay.RoundEndFade.OnClientEvent:Connect(function() A.RoundActive=false RoleData={} A.MyRole="Unknown" A.AutoEngageKilled=false A.AutoEngageKilling=false if CurTween then CurTween:Cancel() CurTween=nil end Plat.CFrame=CFrame.new(0,99999,0) SafeB.Position=Vector3.new(0,99999,0) unfreezeAll() end) end)
+pcall(function() Players.PlayerRemoving:Connect(function(p) if p==LP and A.AutoRejoin then task.wait(2) pcall(function() TP:Teleport(game.PlaceId,LP) end) end end) end)
+
+UIS.InputBegan:Connect(function(input,gp) if gp then return end if input.KeyCode==Enum.KeyCode.RightShift then A.AutoEnabled=not A.AutoEnabled if A.AutoEnabled then A.AutoEngageKilling=false A.AutoEngageKilled=false SafeB.Position=Vector3.new(0,99999,0) task.spawn(farmLoop) else if CurTween then CurTween:Cancel() CurTween=nil end Plat.CFrame=CFrame.new(0,99999,0) unfreezeAll() end end end)
+
+getgenv().AMTMegaHub={notify=notify,askAI=askAI,getRank=getRank,myRank=MY_RANK,sendSupport=sendSup,openSupportChat=openSup,openPlayerChat=openPC,sendPlayerMessage=sendPM,serverHop=serverHop,saveSettings=saveSet,discord=DISCORD_INVITE}
+print("✅ AMT MEGA v43.0 ORANGE + DISCORD Loaded 🎃🟠🎮")
+print("💬 DM: اضغط الاسم في الشات")
+print("🎨 ESP: مصلّح 100%")
+print("🎮 Discord: "..DISCORD_INVITE)
