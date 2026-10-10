@@ -17,7 +17,7 @@ local LP=Players.LocalPlayer
 
 local LOGO="rbxassetid://130355082765285"
 local OR=Color3.fromHex("#FF8C00")
-local DISCORD_INVITE="https://discord.gg/amt"  -- ✏️ غيّر الرابط هنا
+local DISCORD_INVITE="https://discord.gg/9M6y7ztpg"  -- ✏️ غيّر الرابط هنا
 
 local function safeParent(g)
  if gethui then local ok,h=pcall(gethui) if ok and h then local o=pcall(function() g.Parent=h end) if o then return end end end
