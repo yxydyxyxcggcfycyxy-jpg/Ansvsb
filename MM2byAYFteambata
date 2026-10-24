@@ -1,8 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════
--- ARKON — PREMIUM v4.1 — UI Effects ONLY
--- ✅ الأنيميشن داخل القائمة فقط — لا شيء في عالم اللعبة
--- ✅ Safe Zone ثابت 100% (ما يطلعك)
--- ✅ الشعار: 103597872240694
+-- ARKON — PREMIUM v4.2
+-- ✅ إضافة: رفض التريد تلقائياً (بدون إشعارات)
+-- ✅ UI FX فقط | Safe Zone محمي | Farm + Kill
 -- ═══════════════════════════════════════════════════════════════
 
 local RS = game:GetService("ReplicatedStorage")
@@ -14,7 +13,7 @@ local TS = game:GetService("TweenService")
 local RUN = game:GetService("RunService")
 local LP = Players.LocalPlayer
 
-local LOGO_ID = "rbxassetid://103076290487147"
+local LOGO_ID = "rbxassetid://103597872240694"
 
 task.spawn(function()
     pcall(function()
@@ -50,25 +49,68 @@ local A = {
     AntiKickEnabled = true, KickBlocked = 0, CurrentKillTarget = nil,
     SafeZoneEnabled = true, SafeZoneY = -80, RoundStartTime = 0,
     MaxCoinDistance = 300,
+    AutoDeclineTrade = false,  -- ✅ جديد
 }
 _G.AMT = A
 
 -- ═══════════════════════════════════════════════════════════════
--- UI FX SYSTEM (داخل القائمة فقط)
+-- TRADE DECLINE SYSTEM (بدون إشعارات)
+-- ═══════════════════════════════════════════════════════════════
+local TradeFolder = RS:FindFirstChild("Trade")
+local declineTradeRemote = TradeFolder and TradeFolder:FindFirstChild("DeclineTrade")
+local declineRequestRemote = TradeFolder and TradeFolder:FindFirstChild("DeclineRequest")
+
+local function declineAllTrades()
+    if not A.AutoDeclineTrade then return end
+    pcall(function()
+        if declineTradeRemote then declineTradeRemote:FireServer() end
+        if declineRequestRemote then declineRequestRemote:FireServer() end
+    end)
+end
+
+-- مراقبة ريموتات التريد
+task.spawn(function()
+    if not TradeFolder then return end
+    for _, remote in ipairs(TradeFolder:GetDescendants()) do
+        if remote:IsA("RemoteEvent") then
+            local n = remote.Name:lower()
+            if n:find("request") or n:find("invite") or n:find("send") or n:find("offer") then
+                remote.OnClientEvent:Connect(function()
+                    if not A.AutoDeclineTrade then return end
+                    task.wait(0.1)
+                    declineAllTrades()
+                end)
+            end
+        end
+    end
+end)
+
+-- مراقبة GUI التريد
+task.spawn(function()
+    while true do
+        task.wait(0.3)
+        if not A.AutoDeclineTrade then continue end
+        local pg = LP:FindFirstChild("PlayerGui")
+        if pg then
+            for _, gui in ipairs(pg:GetChildren()) do
+                if gui.Name:lower():find("trade") then
+                    declineAllTrades()
+                    task.wait(2)
+                end
+            end
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════════
+-- UI FX
 -- ═══════════════════════════════════════════════════════════════
 local FX = {
-    Enabled = true,
-    TrailEnabled = true,
-    LegendaryEnabled = true,
-    GUIRef = nil,
-    ShimmerThread = nil,
+    Enabled = true, TrailEnabled = true, LegendaryEnabled = true,
+    GUIRef = nil, ShimmerThread = nil,
 }
 
-local UiCallbacks = {
-    onCoin = nil,
-    onKillStart = nil,
-    onSafeStart = nil,
-}
+local UiCallbacks = { onCoin = nil, onKillStart = nil, onSafeStart = nil }
 
 local function uiCardFlash(card, color, duration)
     if not FX.Enabled or not card or not card.Parent then return end
@@ -101,7 +143,6 @@ local function uiFloatText(parent, txt, color, startPos)
     lbl.Font = Enum.Font.GothamBlack
     lbl.ZIndex = 999
     lbl.Parent = parent
-
     local sc = Instance.new("UIScale", lbl)
     sc.Scale = 0.5
     TS:Create(sc, TweenInfo.new(0.2, Enum.EasingStyle.Back), {Scale = 1.2}):Play()
@@ -109,9 +150,7 @@ local function uiFloatText(parent, txt, color, startPos)
         Position = lbl.Position - UDim2.new(0, 0, 0, 35),
         TextTransparency = 1,
     }):Play()
-    task.delay(1, function()
-        if lbl and lbl.Parent then lbl:Destroy() end
-    end)
+    task.delay(1, function() if lbl and lbl.Parent then lbl:Destroy() end end)
 end
 
 local function uiFrameFlash(color, transparency, duration)
@@ -152,9 +191,7 @@ local function startShimmer(barFrame)
                 Position = UDim2.new(1.15, 0, 0, 0),
                 BackgroundTransparency = 0.95,
             }):Play()
-            task.delay(1.5, function()
-                if shine and shine.Parent then shine:Destroy() end
-            end)
+            task.delay(1.5, function() if shine and shine.Parent then shine:Destroy() end end)
             task.wait(1.8)
         end
     end)
@@ -206,7 +243,7 @@ local function releasePlayer()
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- SAFE ZONE (مُصلح — بدون انتظار)
+-- SAFE ZONE
 -- ═══════════════════════════════════════════════════════════════
 local SafeZoneActive, SafeBlock = false, nil
 
@@ -246,29 +283,21 @@ local function goSafeZone()
     local ch = LP.Character
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-
     SafeZoneActive = true
     if CurTween then CurTween:Cancel() CurTween = nil end
     releasePlayer()
-
     local safePos = Vector3.new(hrp.Position.X, A.SafeZoneY or -80, hrp.Position.Z)
-
-    -- 1️⃣ BodyPosition أولاً
     local bp = Instance.new("BodyPosition")
     bp.MaxForce = Vector3.new(50000, 50000, 50000)
     bp.Position = safePos
     bp.P, bp.D = 8000, 800
     bp.Parent = hrp
     IdleHold = bp
-
-    -- 2️⃣ القفل بالموقع
     pcall(function()
         hrp.CFrame = CFrame.new(safePos)
         hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
-
-    -- 3️⃣ البلوكة فوراً
     local block = Instance.new("Part")
     block.Name = "AMT_SafeFloor"
     block.Size = Vector3.new(24, 2, 24)
@@ -280,8 +309,6 @@ local function goSafeZone()
     block.Transparency = 0.4
     block.Parent = WS
     SafeBlock = block
-
-    -- UI fx
     if UiCallbacks.onSafeStart then UiCallbacks.onSafeStart() end
 end
 
@@ -469,7 +496,6 @@ local function farmLoop()
         task.wait(0.03)
         if SafeZoneActive then task.wait(0.4) continue end
         if A.CurrentKillTarget then task.wait(0.15) continue end
-
         if tick() - LastFailedClear > 8 then
             LastFailedClear = tick()
             FailedCoins = {}
@@ -482,7 +508,6 @@ local function farmLoop()
             continue
         end
         if not VelGuard then startVG() end
-
         local ch = LP.Character
         local r = ch and ch:FindFirstChild("HumanoidRootPart")
         local h = ch and ch:FindFirstChildOfClass("Humanoid")
@@ -491,7 +516,6 @@ local function farmLoop()
             task.wait(0.4)
             continue
         end
-
         local sp = math.clamp(A.SpeedValue or 16, A.SpeedMin or 5, A.SpeedMax or 60)
         local tc = nearCoin(r.Position)
         if not (tc and tc.Parent) then task.wait(A.CollectDelay) continue end
@@ -530,7 +554,6 @@ local function farmLoop()
                 if tc and tc.Parent and (A.CollectedCoins or 0) == before then
                     FailedCoins[tc] = true
                 else
-                    -- ✨ UI effect فقط — لا شيء في العالم
                     if UiCallbacks.onCoin then UiCallbacks.onCoin() end
                 end
             end
@@ -548,7 +571,6 @@ local function pullAllInFront()
     local ch = LP.Character
     local myRoot = ch and ch:FindFirstChild("HumanoidRootPart")
     if not myRoot then return {} end
-
     local captured = {}
     local alivePlayers = {}
     for _, p in ipairs(Players:GetPlayers()) do
@@ -561,7 +583,6 @@ local function pullAllInFront()
         end
     end
     if #alivePlayers == 0 then return {} end
-
     local lookVec = myRoot.CFrame.LookVector
     lookVec = Vector3.new(lookVec.X, 0, lookVec.Z)
     if lookVec.Magnitude < 0.1 then
@@ -572,19 +593,13 @@ local function pullAllInFront()
     pcall(function()
         myRoot.CFrame = CFrame.new(myRoot.Position, myRoot.Position + lookVec)
     end)
-
     local frontDist = math.clamp(A.KillFrontDist or 3, 2, 6)
     local frontPos = myRoot.Position + lookVec * frontDist
     local baseRad = math.clamp(A.KillFrontRadius or 1.0, 0.5, 2.5)
     local rad = math.clamp(baseRad + #alivePlayers * 0.15, baseRad, 2.5)
-
     for i, c in ipairs(alivePlayers) do
         local angle = ((i - 1) / math.max(#alivePlayers, 1)) * math.pi * 2
-        local pos = frontPos + Vector3.new(
-            math.cos(angle) * rad,
-            0,
-            math.sin(angle) * rad
-        )
+        local pos = frontPos + Vector3.new(math.cos(angle) * rad, 0, math.sin(angle) * rad)
         pcall(function()
             c.root.Anchored = true
             c.root.CFrame = CFrame.new(pos, pos - lookVec * 5)
@@ -634,33 +649,26 @@ local function killLoop()
         task.wait(0.15)
         if SafeZoneActive then task.wait(0.4) continue end
         if not A.RoundActive then task.wait(0.4) continue end
-
         local role = checkRoleFromTools()
         if role then A.MyRole = role end
         if A.MyRole ~= "Murderer" then task.wait(0.4) continue end
         if A.KillRequireFarm and not A.FarmEnabled then task.wait(0.4) continue end
-
         local target = A.TargetCoins or 50
         local current = A.CollectedCoins or 0
         if current < target then task.wait(0.3) continue end
         if A.KillNeedAllCoins and hasCoinsLeft() then task.wait(0.3) continue end
-
         local ch = LP.Character
         if not ch then task.wait(0.3) continue end
         local h = ch:FindFirstChildOfClass("Humanoid")
         if not h or h.Health <= 0 then task.wait(0.3) continue end
         local myRoot = ch:FindFirstChild("HumanoidRootPart")
         if not myRoot then task.wait(0.3) continue end
-
         equipKnife()
         task.wait(0.1)
-
         local captured = pullAllInFront()
         if #captured == 0 then task.wait(0.4) continue end
-
         A.CurrentKillTarget = "TARGETS(" .. #captured .. ")"
         if UiCallbacks.onKillStart then UiCallbacks.onKillStart() end
-
         for i = 1, (A.KillAttackCount or 25) do
             if not A.KillEnabled or not A.RoundActive then break end
             local alive = 0
@@ -668,7 +676,6 @@ local function killLoop()
                 if c.hum and c.hum.Parent and c.hum.Health > 0 then alive = alive + 1 end
             end
             if alive == 0 then break end
-
             local tool = ch:FindFirstChildOfClass("Tool")
             if tool then pcall(function() tool:Activate() end) end
             pcall(function()
@@ -677,7 +684,6 @@ local function killLoop()
             end)
             task.wait(A.KillClickDelay or 0.05)
         end
-
         for _, c in ipairs(captured) do
             pcall(function()
                 if c.hum then
@@ -693,7 +699,6 @@ local function killLoop()
                 end
             end)
         end
-
         A.CurrentKillTarget = nil
         task.wait(A.KillTargetDelay or 0.4)
     end
@@ -809,7 +814,7 @@ LP.Idled:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════
--- UI v4.1 — Arkon Premium
+-- UI v4.2
 -- ═══════════════════════════════════════════════════════════════
 local gui = Instance.new("ScreenGui")
 gui.Name = "Arkon_UI"
@@ -836,6 +841,7 @@ local C_GREEN_D = Color3.fromRGB(30, 130, 70)
 local C_BLUE    = Color3.fromRGB(90, 175, 255)
 local C_YELLOW  = Color3.fromRGB(255, 200, 60)
 local C_PURPLE  = Color3.fromRGB(180, 100, 255)
+local C_CYAN    = Color3.fromRGB(80, 220, 220)
 
 local function corner(p, r)
     local c = Instance.new("UICorner")
@@ -970,7 +976,7 @@ local subtitle = Instance.new("TextLabel")
 subtitle.Size = UDim2.new(1, -180, 0, 12)
 subtitle.Position = UDim2.new(0, 58, 0, 30)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "Premium Auto v4.1"
+subtitle.Text = "Premium Auto v4.2"
 subtitle.TextColor3 = C_MUTED
 subtitle.TextSize = 10
 subtitle.Font = Enum.Font.GothamMedium
@@ -1287,12 +1293,78 @@ toggleKnob.BorderSizePixel = 0
 toggleKnob.Parent = toggleBg
 corner(toggleKnob, 8)
 
+-- ✅ TRADE DECLINE CARD (جديد)
+local tradeCard = Instance.new("Frame")
+tradeCard.Size = UDim2.new(1, -24, 0, 42)
+tradeCard.BackgroundColor3 = C_CARD
+tradeCard.BorderSizePixel = 0
+tradeCard.LayoutOrder = 4
+tradeCard.Parent = body
+corner(tradeCard, 12)
+local tradeStroke = stroke(tradeCard, C_CYAN, 1.2, 0.7)
+grad(tradeCard, C_CARD, C_CARD2, 135)
+
+local tradeBadge = Instance.new("Frame")
+tradeBadge.Size = UDim2.new(0, 24, 0, 24)
+tradeBadge.Position = UDim2.new(0, 10, 0.5, -12)
+tradeBadge.BackgroundColor3 = C_CARD2
+tradeBadge.BorderSizePixel = 0
+tradeBadge.Parent = tradeCard
+corner(tradeBadge, 7)
+
+local tradeIcon = Instance.new("TextLabel")
+tradeIcon.Size = UDim2.new(1, 0, 1, 0)
+tradeIcon.BackgroundTransparency = 1
+tradeIcon.Text = "🚫"
+tradeIcon.TextSize = 13
+tradeIcon.Parent = tradeBadge
+
+local tradeLabel = Instance.new("TextLabel")
+tradeLabel.Size = UDim2.new(1, -120, 0, 14)
+tradeLabel.Position = UDim2.new(0, 42, 0, 6)
+tradeLabel.BackgroundTransparency = 1
+tradeLabel.Text = "DECLINE TRADE"
+tradeLabel.TextColor3 = C_TEXT
+tradeLabel.TextSize = 11
+tradeLabel.Font = Enum.Font.GothamBold
+tradeLabel.TextXAlignment = Enum.TextXAlignment.Left
+tradeLabel.Parent = tradeCard
+
+local tradeDesc = Instance.new("TextLabel")
+tradeDesc.Size = UDim2.new(1, -120, 0, 12)
+tradeDesc.Position = UDim2.new(0, 42, 0, 22)
+tradeDesc.BackgroundTransparency = 1
+tradeDesc.Text = "Auto-reject all trades"
+tradeDesc.TextColor3 = C_MUTED
+tradeDesc.TextSize = 9
+tradeDesc.Font = Enum.Font.GothamMedium
+tradeDesc.TextXAlignment = Enum.TextXAlignment.Left
+tradeDesc.Parent = tradeCard
+
+local tradeToggle = Instance.new("TextButton")
+tradeToggle.Size = UDim2.new(0, 42, 0, 22)
+tradeToggle.Position = UDim2.new(1, -52, 0.5, -11)
+tradeToggle.BackgroundColor3 = C_DIM
+tradeToggle.Text = ""
+tradeToggle.AutoButtonColor = false
+tradeToggle.BorderSizePixel = 0
+tradeToggle.Parent = tradeCard
+corner(tradeToggle, 11)
+
+local tradeKnob = Instance.new("Frame")
+tradeKnob.Size = UDim2.new(0, 16, 0, 16)
+tradeKnob.Position = UDim2.new(0, 2, 0.5, -8)
+tradeKnob.BackgroundColor3 = Color3.new(1, 1, 1)
+tradeKnob.BorderSizePixel = 0
+tradeKnob.Parent = tradeToggle
+corner(tradeKnob, 8)
+
 -- FX CARD
 local fxCard = Instance.new("Frame")
 fxCard.Size = UDim2.new(1, -24, 0, 42)
 fxCard.BackgroundColor3 = C_CARD
 fxCard.BorderSizePixel = 0
-fxCard.LayoutOrder = 4
+fxCard.LayoutOrder = 5
 fxCard.Parent = body
 corner(fxCard, 12)
 local fxStroke = stroke(fxCard, C_PURPLE, 1.2, 0.7)
@@ -1357,7 +1429,7 @@ corner(fxKnob, 8)
 local btnRow = Instance.new("Frame")
 btnRow.Size = UDim2.new(1, -24, 0, 46)
 btnRow.BackgroundTransparency = 1
-btnRow.LayoutOrder = 5
+btnRow.LayoutOrder = 6
 btnRow.Parent = body
 
 local farmBtn = Instance.new("TextButton")
@@ -1396,7 +1468,7 @@ footer.Size = UDim2.new(1, -24, 0, 26)
 footer.BackgroundColor3 = C_CARD
 footer.BackgroundTransparency = 0.4
 footer.BorderSizePixel = 0
-footer.LayoutOrder = 6
+footer.LayoutOrder = 7
 footer.Parent = body
 corner(footer, 8)
 
@@ -1433,7 +1505,7 @@ keybindHint.Parent = footer
 local padBot = Instance.new("Frame")
 padBot.Size = UDim2.new(1, 0, 0, 8)
 padBot.BackgroundTransparency = 1
-padBot.LayoutOrder = 7
+padBot.LayoutOrder = 8
 padBot.Parent = body
 
 local function recalcSize()
@@ -1461,7 +1533,7 @@ minBtn.MouseButton1Click:Connect(function()
 end)
 
 closeBtn.MouseButton1Click:Connect(function()
-    A.FarmEnabled, A.KillEnabled = false, false
+    A.FarmEnabled, A.KillEnabled, A.AutoDeclineTrade = false, false, false
     if CurTween then CurTween:Cancel() CurTween = nil end
     stopVG()
     if SafeZoneActive then exitSafeZone() end
@@ -1476,7 +1548,6 @@ pressScale(killBtn)
 pressScale(minBtn)
 pressScale(closeBtn)
 
--- ✅ Callbacks — كلها UI فقط
 UiCallbacks.onCoin = function()
     if not FX.Enabled or not FX.LegendaryEnabled then return end
     uiCardFlash(progCard, Color3.fromRGB(255, 220, 100), 0.4)
@@ -1508,6 +1579,23 @@ end
 toggleBg.MouseButton1Click:Connect(function()
     A.SafeZoneEnabled = not A.SafeZoneEnabled
     if not A.SafeZoneEnabled and SafeZoneActive then exitSafeZone() end
+end)
+
+-- Toggle TRADE
+local lastTradeState = A.AutoDeclineTrade
+local function applyTradeToggle()
+    local en = A.AutoDeclineTrade
+    TS:Create(tradeToggle, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {
+        BackgroundColor3 = en and C_CYAN or C_DIM
+    }):Play()
+    TS:Create(tradeKnob, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {
+        Position = en and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+    }):Play()
+end
+tradeToggle.MouseButton1Click:Connect(function()
+    A.AutoDeclineTrade = not A.AutoDeclineTrade
+    applyTradeToggle()
+    lastTradeState = A.AutoDeclineTrade
 end)
 
 -- Toggle FX
@@ -1603,7 +1691,6 @@ task.spawn(function()
 
             logoGlow.Transparency = 0.4 + math.abs(math.sin(tick() * 2)) * 0.3
 
-            -- Safe zone glow when active
             if SafeZoneActive then
                 safeStroke.Transparency = 0.2 + math.abs(math.sin(tick() * 4)) * 0.3
                 safeStroke.Thickness = 2
@@ -1612,9 +1699,22 @@ task.spawn(function()
                 safeStroke.Thickness = 1.2
             end
 
+            -- Trade glow when active
+            if A.AutoDeclineTrade then
+                tradeStroke.Transparency = 0.3 + math.abs(math.sin(tick() * 3)) * 0.3
+                tradeStroke.Thickness = 1.8
+            else
+                tradeStroke.Transparency = 0.7
+                tradeStroke.Thickness = 1.2
+            end
+
             if A.SafeZoneEnabled ~= lastToggleState then
                 lastToggleState = A.SafeZoneEnabled
                 applySafeToggle()
+            end
+            if A.AutoDeclineTrade ~= lastTradeState then
+                lastTradeState = A.AutoDeclineTrade
+                applyTradeToggle()
             end
             if FX.Enabled ~= lastFxState then
                 lastFxState = FX.Enabled
@@ -1640,7 +1740,7 @@ task.spawn(function()
                     farmBtn.Text = "⏹ STOP"
                     farmGrad.Color = ColorSequence.new(C_RED, C_RED_D)
                     farmStroke.Color = C_RED
-                    statusTxt.Text = "✨ Farming + UI FX"
+                    statusTxt.Text = "✨ Farming"
                     statusTxt.TextColor3 = C_GREEN
                     statusDot.BackgroundColor3 = C_GREEN
                 end
@@ -1669,9 +1769,6 @@ task.spawn(function()
                     killBtn.Text = "⏳ " .. A.CollectedCoins .. "/" .. A.TargetCoins
                     killGrad.Color = ColorSequence.new(C_YELLOW, Color3.fromRGB(180, 140, 20))
                     killStroke.Color = C_YELLOW
-                    statusTxt.Text = "Waiting for full coins..."
-                    statusTxt.TextColor3 = C_YELLOW
-                    statusDot.BackgroundColor3 = C_YELLOW
                 elseif A.KillNeedAllCoins and hasCoinsLeft() then
                     killBtn.Text = "⏳ FINISHING"
                     killGrad.Color = ColorSequence.new(C_YELLOW, Color3.fromRGB(180, 140, 20))
@@ -1680,9 +1777,6 @@ task.spawn(function()
                     killBtn.Text = "🔪 " .. A.CurrentKillTarget
                     killGrad.Color = ColorSequence.new(C_RED, C_RED_D)
                     killStroke.Color = C_RED
-                    statusTxt.Text = "Killing in front..."
-                    statusTxt.TextColor3 = C_RED
-                    statusDot.BackgroundColor3 = C_RED
                 else
                     killBtn.Text = "🔪 KILLING"
                     killGrad.Color = ColorSequence.new(C_RED, C_RED_D)
@@ -1745,7 +1839,8 @@ getgenv().Arkon = {
     hasCoinsLeft = hasCoinsLeft, holdPlayer = holdPlayer,
     releasePlayer = releasePlayer, goSafeZone = goSafeZone,
     exitSafeZone = exitSafeZone, AntiKickLog = AntiKickLog,
+    declineAllTrades = declineAllTrades,
     SetSpeed = function(n) A.SpeedValue = math.clamp(tonumber(n) or 16, SPEED_MIN, SPEED_MAX) end,
 }
 
-print("[ARKON] v4.1 — UI FX ONLY ✓ | Safe Zone FIXED ✓")
+print("[ARKON] v4.2 — Trade Decline ✓ | UI FX ✓ | Safe Zone ✓")
