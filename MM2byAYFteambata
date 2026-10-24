@@ -1,6 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════
--- AMT FARM — ULTIMATE EDITION
--- Farm AFK + Auto Noclip + ESP Roles + Auto Fight + Smart Targeting
+-- ARKON — PREMIUM v4.1 — UI Effects ONLY
+-- ✅ الأنيميشن داخل القائمة فقط — لا شيء في عالم اللعبة
+-- ✅ Safe Zone ثابت 100% (ما يطلعك)
+-- ✅ الشعار: 103597872240694
 -- ═══════════════════════════════════════════════════════════════
 
 local RS = game:GetService("ReplicatedStorage")
@@ -12,7 +14,16 @@ local TS = game:GetService("TweenService")
 local RUN = game:GetService("RunService")
 local LP = Players.LocalPlayer
 
-local OR = Color3.fromHex("#FF8C00")
+local LOGO_ID = "rbxassetid://103076290487147"
+
+task.spawn(function()
+    pcall(function()
+        local img = Instance.new("ImageLabel")
+        img.Image = LOGO_ID
+        game:GetService("ContentProvider"):PreloadAsync({img})
+        img:Destroy()
+    end)
+end)
 
 local function safeParent(g)
     if gethui then
@@ -25,47 +36,314 @@ local function safeParent(g)
     pcall(function() g.Parent = LP:WaitForChild("PlayerGui", 5) end)
 end
 
--- ═══════════════════════════════════════════════════════════════
--- STATE
--- ═══════════════════════════════════════════════════════════════
+local SPEED_MIN, SPEED_MAX = 5, 60
+
 local A = {
-    AutoEnabled = false,
-    SpeedValue = 35,
-    RoundActive = false,
-    MyRole = "Unknown",
-    CollectedCoins = 0,
-    TargetCoins = 50,
-    MinCoinsBeforeKill = 0,
-    AutoEngageEnabled = true,
-    AutoEngageKilled = false,
-    AutoEngageKilling = false,
-    AutoFight = false,
-    ESPEnabled = false,
+    FarmEnabled = false, KillEnabled = false, RoundActive = false,
+    MyRole = "Unknown", CollectedCoins = 0, TargetCoins = 50, TargetKnown = false,
+    SpeedValue = 16, SpeedMin = SPEED_MIN, SpeedMax = SPEED_MAX,
+    VerticalSpeedMult = 1.5, CoinHoldTime = 0.05,
+    KillRequireFarm = true, KillNeedAllCoins = true,
+    CollectDelay = 0.3, CoinOffset = 4,
+    KillFrontDist = 3, KillFrontRadius = 1.0,
+    KillAttackCount = 25, KillClickDelay = 0.05, KillTargetDelay = 0.4,
+    AntiKickEnabled = true, KickBlocked = 0, CurrentKillTarget = nil,
+    SafeZoneEnabled = true, SafeZoneY = -80, RoundStartTime = 0,
+    MaxCoinDistance = 300,
 }
 _G.AMT = A
 
-local CCO = {}
-local RoleData = {}
-local CurTween = nil
-local LastCoinRefresh = 0
-local CoinCache = {}
-local CoinCacheTime = 0
-local FailedCoins = {}
-local LastRespawn = 0
-local FarmBaseY = nil
-local VelGuard = nil
-local ESPObj = {}
+-- ═══════════════════════════════════════════════════════════════
+-- UI FX SYSTEM (داخل القائمة فقط)
+-- ═══════════════════════════════════════════════════════════════
+local FX = {
+    Enabled = true,
+    TrailEnabled = true,
+    LegendaryEnabled = true,
+    GUIRef = nil,
+    ShimmerThread = nil,
+}
 
-local killEvent = RS:FindFirstChild("Remotes")
-    and RS.Remotes:FindFirstChild("Gameplay")
-    and RS.Remotes.Gameplay:FindFirstChild("KillEvent")
-if not killEvent then killEvent = RS:FindFirstChild("KillEvent") end
+local UiCallbacks = {
+    onCoin = nil,
+    onKillStart = nil,
+    onSafeStart = nil,
+}
+
+local function uiCardFlash(card, color, duration)
+    if not FX.Enabled or not card or not card.Parent then return end
+    color = color or Color3.fromRGB(255, 200, 60)
+    duration = duration or 0.5
+    local s = card:FindFirstChildOfClass("UIStroke")
+    if not s then
+        s = Instance.new("UIStroke")
+        s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        s.Parent = card
+    end
+    local oldCol, oldTh, oldTr = s.Color, s.Thickness, s.Transparency
+    s.Color = color
+    s.Thickness = 3
+    s.Transparency = 0
+    TS:Create(s, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Transparency = oldTr, Thickness = oldTh, Color = oldCol,
+    }):Play()
+end
+
+local function uiFloatText(parent, txt, color, startPos)
+    if not FX.Enabled or not parent or not parent.Parent then return end
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 60, 0, 20)
+    lbl.Position = startPos or UDim2.new(0.5, -30, 0.3, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = txt
+    lbl.TextColor3 = color or Color3.fromRGB(255, 200, 60)
+    lbl.TextSize = 16
+    lbl.Font = Enum.Font.GothamBlack
+    lbl.ZIndex = 999
+    lbl.Parent = parent
+
+    local sc = Instance.new("UIScale", lbl)
+    sc.Scale = 0.5
+    TS:Create(sc, TweenInfo.new(0.2, Enum.EasingStyle.Back), {Scale = 1.2}):Play()
+    TS:Create(lbl, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = lbl.Position - UDim2.new(0, 0, 0, 35),
+        TextTransparency = 1,
+    }):Play()
+    task.delay(1, function()
+        if lbl and lbl.Parent then lbl:Destroy() end
+    end)
+end
+
+local function uiFrameFlash(color, transparency, duration)
+    if not FX.Enabled or not FX.GUIRef or not FX.GUIRef.Parent then return end
+    local flash = Instance.new("Frame")
+    flash.Size = UDim2.new(1, 0, 1, 0)
+    flash.BackgroundColor3 = color or Color3.fromRGB(255, 200, 60)
+    flash.BackgroundTransparency = transparency or 0.75
+    flash.BorderSizePixel = 0
+    flash.ZIndex = 999998
+    flash.Parent = FX.GUIRef
+    TS:Create(flash, TweenInfo.new(duration or 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 1,
+    }):Play()
+    task.delay((duration or 0.5) + 0.1, function()
+        if flash and flash.Parent then flash:Destroy() end
+    end)
+end
+
+local function startShimmer(barFrame)
+    if FX.ShimmerThread then pcall(task.cancel, FX.ShimmerThread) end
+    FX.ShimmerThread = task.spawn(function()
+        while barFrame and barFrame.Parent do
+            if not FX.Enabled or not FX.TrailEnabled or not A.FarmEnabled then
+                task.wait(0.5)
+                continue
+            end
+            local shine = Instance.new("Frame")
+            shine.Size = UDim2.new(0.2, 0, 1, 0)
+            shine.Position = UDim2.new(-0.25, 0, 0, 0)
+            shine.BackgroundColor3 = Color3.new(1, 1, 1)
+            shine.BackgroundTransparency = 0.5
+            shine.BorderSizePixel = 0
+            shine.ZIndex = 5
+            shine.Parent = barFrame
+            Instance.new("UICorner", shine).CornerRadius = UDim.new(1, 0)
+            TS:Create(shine, TweenInfo.new(1.4, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
+                Position = UDim2.new(1.15, 0, 0, 0),
+                BackgroundTransparency = 0.95,
+            }):Play()
+            task.delay(1.5, function()
+                if shine and shine.Parent then shine:Destroy() end
+            end)
+            task.wait(1.8)
+        end
+    end)
+end
+
+local function cleanupUIEffects()
+    if FX.ShimmerThread then
+        pcall(task.cancel, FX.ShimmerThread)
+        FX.ShimmerThread = nil
+    end
+end
 
 -- ═══════════════════════════════════════════════════════════════
--- NOCLIP (Auto — Always On)
+-- IDLE HOLD
+-- ═══════════════════════════════════════════════════════════════
+local IdleHold = nil
+local function holdPlayer()
+    local ch = LP.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if IdleHold then pcall(function() IdleHold:Destroy() end) IdleHold = nil end
+    pcall(function()
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end)
+    if hrp.Position.Y < -100 then
+        pcall(function() hrp.CFrame = CFrame.new(0, 100, 0) end)
+    end
+    local targetPos = hrp.Position
+    pcall(function()
+        local rc = RaycastParams.new()
+        rc.FilterDescendantsInstances = {ch}
+        rc.FilterType = Enum.RaycastFilterType.Exclude
+        local ray = WS:Raycast(hrp.Position + Vector3.new(0, 2, 0), Vector3.new(0, -300, 0), rc)
+        if ray and ray.Position.Y > -100 then
+            targetPos = Vector3.new(hrp.Position.X, ray.Position.Y + 3.5, hrp.Position.Z)
+            hrp.CFrame = CFrame.new(targetPos)
+        end
+    end)
+    local bp = Instance.new("BodyPosition")
+    bp.MaxForce = Vector3.new(0, 100000, 0)
+    bp.Position = targetPos
+    bp.P, bp.D = 5000, 500
+    bp.Parent = hrp
+    IdleHold = bp
+end
+local function releasePlayer()
+    if IdleHold then pcall(function() IdleHold:Destroy() end) IdleHold = nil end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- SAFE ZONE (مُصلح — بدون انتظار)
+-- ═══════════════════════════════════════════════════════════════
+local SafeZoneActive, SafeBlock = false, nil
+
+local function cleanupSafeBlocks()
+    pcall(function()
+        for _, v in ipairs(WS:GetDescendants()) do
+            if v:IsA("BasePart") and v.Name == "AMT_SafeFloor" then v:Destroy() end
+        end
+    end)
+end
+cleanupSafeBlocks()
+
+local function checkRoleFromTools()
+    local mc = LP.Character
+    if not mc then return nil end
+    local mt = mc:FindFirstChildOfClass("Tool")
+    if mt then
+        local n = mt.Name:lower()
+        if n:find("knife") or n:find("sword") or n:find("blade") or n:find("dagger") then return "Murderer" end
+        if n:find("gun") or n:find("revolver") or n:find("pistol") then return "Sheriff" end
+    end
+    local bp = LP:FindFirstChildOfClass("Backpack")
+    if bp then
+        for _, t in ipairs(bp:GetChildren()) do
+            if t:IsA("Tool") then
+                local n = t.Name:lower()
+                if n:find("knife") or n:find("sword") or n:find("blade") or n:find("dagger") then return "Murderer" end
+                if n:find("gun") or n:find("revolver") or n:find("pistol") then return "Sheriff" end
+            end
+        end
+    end
+    return nil
+end
+
+local function goSafeZone()
+    if SafeZoneActive then return end
+    local ch = LP.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    SafeZoneActive = true
+    if CurTween then CurTween:Cancel() CurTween = nil end
+    releasePlayer()
+
+    local safePos = Vector3.new(hrp.Position.X, A.SafeZoneY or -80, hrp.Position.Z)
+
+    -- 1️⃣ BodyPosition أولاً
+    local bp = Instance.new("BodyPosition")
+    bp.MaxForce = Vector3.new(50000, 50000, 50000)
+    bp.Position = safePos
+    bp.P, bp.D = 8000, 800
+    bp.Parent = hrp
+    IdleHold = bp
+
+    -- 2️⃣ القفل بالموقع
+    pcall(function()
+        hrp.CFrame = CFrame.new(safePos)
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end)
+
+    -- 3️⃣ البلوكة فوراً
+    local block = Instance.new("Part")
+    block.Name = "AMT_SafeFloor"
+    block.Size = Vector3.new(24, 2, 24)
+    block.Position = safePos - Vector3.new(0, 4, 0)
+    block.Anchored = true
+    block.CanCollide = true
+    block.Color = Color3.fromRGB(60, 200, 120)
+    block.Material = Enum.Material.Neon
+    block.Transparency = 0.4
+    block.Parent = WS
+    SafeBlock = block
+
+    -- UI fx
+    if UiCallbacks.onSafeStart then UiCallbacks.onSafeStart() end
+end
+
+local function exitSafeZone()
+    if not SafeZoneActive then return end
+    SafeZoneActive = false
+    if SafeBlock then pcall(function() SafeBlock:Destroy() end) SafeBlock = nil end
+    if IdleHold then pcall(function() IdleHold:Destroy() end) IdleHold = nil end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ANTI-KICK
+-- ═══════════════════════════════════════════════════════════════
+local AntiKickLog = {}
+local function logKick(src)
+    A.KickBlocked = (A.KickBlocked or 0) + 1
+    table.insert(AntiKickLog, { t = tick(), src = src })
+    if #AntiKickLog > 30 then table.remove(AntiKickLog, 1) end
+end
+local function setupAntiKick()
+    pcall(function() LP.Kick = function() logKick("Player:Kick") end end)
+    pcall(function()
+        local oldPK = Players.Kick
+        Players.Kick = function(self, plr, ...)
+            if plr == LP then logKick("Players:Kick") return end
+            return oldPK(self, plr, ...)
+        end
+    end)
+    if hookmetamethod and getnamecallmethod then
+        pcall(function()
+            local oldNC
+            oldNC = hookmetamethod(game, "__namecall", function(self, ...)
+                if not A.AntiKickEnabled then return oldNC(self, ...) end
+                local m = getnamecallmethod()
+                if m == "Kick" then
+                    if self == LP then logKick("nc:Kick") return end
+                    local a1 = ...
+                    if self == Players and a1 == LP then logKick("nc:PK") return end
+                elseif m == "Destroy" then
+                    if self == LP then logKick("nc:Destroy") return end
+                end
+                return oldNC(self, ...)
+            end)
+        end)
+    end
+    pcall(function()
+        RUN.Heartbeat:Connect(function()
+            if not A.AntiKickEnabled then return end
+            local ch = LP.Character
+            local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+            if hrp and hrp.Position.Y < -500 then
+                pcall(function() hrp.CFrame = CFrame.new(0, 50, 0) end)
+            end
+        end)
+    end)
+end
+setupAntiKick()
+
+-- ═══════════════════════════════════════════════════════════════
+-- NOCLIP
 -- ═══════════════════════════════════════════════════════════════
 local NC = nil
-
 local function EnNC()
     if NC then NC:Disconnect() end
     NC = RUN.Stepped:Connect(function()
@@ -78,21 +356,7 @@ local function EnNC()
     end)
 end
 EnNC()
-LP.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    EnNC()
-end)
-
--- ═══════════════════════════════════════════════════════════════
--- PLATFORM
--- ═══════════════════════════════════════════════════════════════
-local Plat = Instance.new("Part")
-Plat.Name = "AMT_P"
-Plat.Size = Vector3.new(12, 1, 12)
-Plat.Anchored = true
-Plat.Transparency = 1
-Plat.CanCollide = true
-Plat.Parent = WS
+LP.CharacterAdded:Connect(function() task.wait(0.5) EnNC() end)
 
 local function isAlive()
     local ch = LP.Character
@@ -105,8 +369,15 @@ end
 -- ═══════════════════════════════════════════════════════════════
 -- COIN CACHE
 -- ═══════════════════════════════════════════════════════════════
+local CCO, RoleData = {}, {}
+local CurTween, VelGuard = nil, nil
+local LastCoinRefresh = 0
+local CoinCache, CoinCacheTime = {}, 0
+local FailedCoins, LastFailedClear = {}, 0
+local LastRespawn, KillLoopRunning = 0, false
+
 local function refreshCoinCache()
-    if tick() - LastCoinRefresh < 2 then return end
+    if tick() - LastCoinRefresh < 1 then return end
     LastCoinRefresh = tick()
     local newCache = {}
     local ok, desc = pcall(function() return WS:GetDescendants() end)
@@ -134,7 +405,7 @@ local function isCoinValid(v)
 end
 
 local function nearCoin(pos)
-    if tick() - CoinCacheTime > 2 then refreshCoinCache() end
+    if tick() - CoinCacheTime > 1 then refreshCoinCache() end
     if #CoinCache == 0 then return nil end
     local best, bestDist = nil, math.huge
     local newCache = {}
@@ -150,129 +421,32 @@ local function nearCoin(pos)
     return best
 end
 
--- ═══════════════════════════════════════════════════════════════
--- COMBAT HELPERS
--- ═══════════════════════════════════════════════════════════════
-local function pullAll()
-    local ch = LP.Character
-    if not ch then return end
-    local r = ch:FindFirstChild("HumanoidRootPart")
-    if not r then return end
-    local pos = r.Position
-    local lv = r.CFrame.LookVector
-    local rv = r.CFrame.RightVector
-    local i = 0
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP and p.Character then
-            local tr = p.Character:FindFirstChild("HumanoidRootPart")
-            if tr then
-                local row = math.floor(i / 4)
-                local col = i % 4
-                local tp = pos + (lv * (row * 1.2 + 2)) + (rv * ((col - 1.5) * 1.2))
-                pcall(function()
-                    tr.CFrame = CFrame.new(tp, pos)
-                    tr.Anchored = true
-                    local h = p.Character:FindFirstChildOfClass("Humanoid")
-                    if h then
-                        h.WalkSpeed = 0
-                        h.JumpPower = 0
-                        h.PlatformStand = true
-                    end
-                    for _, pt in ipairs(p.Character:GetChildren()) do
-                        if pt:IsA("BasePart") then pt.Anchored = true end
-                    end
-                end)
-                i = i + 1
-            end
-        end
-    end
-end
-
-local function equipK()
-    pcall(function()
-        local ch = LP.Character
-        if not ch then return end
-        local h = ch:FindFirstChildOfClass("Humanoid")
-        local bp = LP:FindFirstChildOfClass("Backpack")
-        if not h then return end
-        if ch:FindFirstChildOfClass("Tool") then
-            VU:CaptureController()
-            VU:ClickButton1(Vector2.new(500, 500))
-            return
-        end
-        if bp then
-            for _, tool in ipairs(bp:GetChildren()) do
-                if tool:IsA("Tool") then
-                    local n = tool.Name:lower()
-                    if n:find("knife") or n:find("sword") or n:find("blade") then
-                        pcall(function() h:EquipTool(tool) end)
-                        task.wait(0.08)
-                        VU:CaptureController()
-                        VU:ClickButton1(Vector2.new(500, 500))
-                        return
-                    end
+local function hasCoinsLeft()
+    local ok, desc = pcall(function() return WS:GetDescendants() end)
+    if not ok or not desc then return false end
+    for i = 1, #desc do
+        local v = desc[i]
+        if v:IsA("BasePart") and v.Parent and v.Transparency < 1 then
+            if not FailedCoins[v] and not CCO[v] then
+                local n = v.Name
+                if n == "Coin_Server" or n == "Coin" or n == "Coin_Client"
+                    or n:lower():find("coin", 1, true) then
+                    return true
                 end
             end
-            local firstTool = bp:FindFirstChildOfClass("Tool")
-            if firstTool then
-                pcall(function() h:EquipTool(firstTool) end)
-                task.wait(0.08)
-                VU:CaptureController()
-                VU:ClickButton1(Vector2.new(500, 500))
-            end
-        end
-    end)
-end
-
-local function atkAll()
-    for i = 1, 15 do
-        pcall(function()
-            VU:CaptureController()
-            VU:ClickButton1(Vector2.new(500, 500))
-        end)
-        task.wait(0.05)
-    end
-end
-
-local function killRem()
-    if not killEvent then return end
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP then
-            pcall(function()
-                killEvent:FireServer(p.Name, OR)
-                killEvent:FireServer(p.Name)
-            end)
         end
     end
-end
-
-function unfreezeAll()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p.Character then
-            pcall(function()
-                local h = p.Character:FindFirstChildOfClass("Humanoid")
-                if h then
-                    h.WalkSpeed = 16
-                    h.JumpPower = 50
-                    h.PlatformStand = false
-                end
-                local r = p.Character:FindFirstChild("HumanoidRootPart")
-                if r then r.Anchored = false end
-                for _, pt in ipairs(p.Character:GetChildren()) do
-                    if pt:IsA("BasePart") then pt.Anchored = false end
-                end
-            end)
-        end
-    end
+    return false
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- VELOCITY GUARD (يعمل فقط في الجولة)
+-- VELOCITY GUARD
 -- ═══════════════════════════════════════════════════════════════
 local function startVG()
     if VelGuard then VelGuard:Disconnect() end
     VelGuard = RUN.Heartbeat:Connect(function()
-        if not A.RoundActive then return end
+        if not A.RoundActive or not A.FarmEnabled then return end
+        if SafeZoneActive or A.CurrentKillTarget then return end
         local ch = LP.Character
         local r = ch and ch:FindFirstChild("HumanoidRootPart")
         if r and not r.Anchored then
@@ -288,76 +462,63 @@ local function stopVG()
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- FARM LOOP — Armed anytime، يتحرك فقط في الجولة
+-- FARM LOOP
 -- ═══════════════════════════════════════════════════════════════
 local function farmLoop()
-    while A.AutoEnabled do
-        task.wait(0.05)
+    while A.FarmEnabled do
+        task.wait(0.03)
+        if SafeZoneActive then task.wait(0.4) continue end
+        if A.CurrentKillTarget then task.wait(0.15) continue end
 
-        -- لوبي: انتظار بدون حركة
+        if tick() - LastFailedClear > 8 then
+            LastFailedClear = tick()
+            FailedCoins = {}
+            LastCoinRefresh = 0
+        end
         if not A.RoundActive then
             if VelGuard then stopVG() end
             if CurTween then CurTween:Cancel() CurTween = nil end
-            FarmBaseY = nil
             task.wait(0.5)
             continue
         end
-
         if not VelGuard then startVG() end
 
         local ch = LP.Character
         local r = ch and ch:FindFirstChild("HumanoidRootPart")
         local h = ch and ch:FindFirstChildOfClass("Humanoid")
-
         if not r or not h or h.Health <= 0 or tick() - LastRespawn < 3 then
             if CurTween then CurTween:Cancel() CurTween = nil end
-            FarmBaseY = nil
             task.wait(0.4)
             continue
         end
 
-        if not FarmBaseY then
-            local rc = RaycastParams.new()
-            rc.FilterType = Enum.RaycastFilterType.Exclude
-            rc.FilterDescendantsInstances = { ch, Plat }
-            local hit = workspace:Raycast(r.Position, Vector3.new(0, -5000, 0), rc)
-            if hit then
-                FarmBaseY = math.min(hit.Position.Y - 8, r.Position.Y - 3)
-            else
-                FarmBaseY = r.Position.Y - 20
-            end
-        end
-
-        local sp = math.clamp(A.SpeedValue or 35, 5, 100)
+        local sp = math.clamp(A.SpeedValue or 16, A.SpeedMin or 5, A.SpeedMax or 60)
         local tc = nearCoin(r.Position)
-
-        if not (tc and tc.Parent) then
-            if math.abs(r.Position.Y - FarmBaseY) > 0.5 then
-                if CurTween then CurTween:Cancel() end
-                CurTween = TS:Create(r, TweenInfo.new(0.2, Enum.EasingStyle.Linear),
-                    { CFrame = CFrame.new(r.Position.X, FarmBaseY, r.Position.Z) })
-                CurTween:Play()
-            end
-            task.wait(0.12)
+        if not (tc and tc.Parent) then task.wait(A.CollectDelay) continue end
+        local dist = (tc.Position - r.Position).Magnitude
+        if dist > (A.MaxCoinDistance or 300) then
+            FailedCoins[tc] = true
+            LastCoinRefresh = 0
+            task.wait(0.05)
             continue
         end
-
-        local under = Vector3.new(tc.Position.X, FarmBaseY, tc.Position.Z)
+        local offset = math.clamp(A.CoinOffset or 4, 1, 10)
+        local under = Vector3.new(tc.Position.X, tc.Position.Y - offset, tc.Position.Z)
+        local vertMult = A.VerticalSpeedMult or 1.5
+        local holdAtCoin = A.CoinHoldTime or 0.05
         local STEPS = {
-            { pos = under, spd = sp, touch = false },
-            { pos = tc.Position, spd = sp * 2, touch = true },
-            { pos = under, spd = sp * 2, touch = false },
+            { pos = under, spd = sp, touch = false, hold = 0 },
+            { pos = tc.Position, spd = sp * vertMult, touch = true, hold = holdAtCoin },
+            { pos = under, spd = sp * vertMult, touch = false, hold = 0 },
         }
-
         for _, s in ipairs(STEPS) do
-            if not A.AutoEnabled or not isAlive() or not A.RoundActive then break end
+            if not A.FarmEnabled or not isAlive() or not A.RoundActive or SafeZoneActive or A.CurrentKillTarget then break end
             local d = (r.Position - s.pos).Magnitude
-            local dur = math.max(0.05, d / s.spd)
+            local dur = math.max(0.03, d / s.spd)
             if CurTween then CurTween:Cancel() end
             CurTween = TS:Create(r, TweenInfo.new(dur, Enum.EasingStyle.Linear), { CFrame = CFrame.new(s.pos) })
             CurTween:Play()
             task.wait(dur + 0.01)
-
             if s.touch and tc and tc.Parent then
                 local before = A.CollectedCoins or 0
                 pcall(function()
@@ -368,109 +529,177 @@ local function farmLoop()
                 task.wait(0.03)
                 if tc and tc.Parent and (A.CollectedCoins or 0) == before then
                     FailedCoins[tc] = true
+                else
+                    -- ✨ UI effect فقط — لا شيء في العالم
+                    if UiCallbacks.onCoin then UiCallbacks.onCoin() end
                 end
             end
+            if s.hold and s.hold > 0 then task.wait(s.hold) end
         end
+        task.wait(A.CollectDelay)
     end
     stopVG()
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- SAFE B + AUTO ENGAGE
+-- PULL ALL → IN FRONT
 -- ═══════════════════════════════════════════════════════════════
-local SafeB = Instance.new("Part")
-SafeB.Name = "AMT_SB"
-SafeB.Size = Vector3.new(30, 2, 30)
-SafeB.Anchored = true
-SafeB.CanCollide = true
-SafeB.Transparency = 0.4
-SafeB.Color = OR
-SafeB.Material = Enum.Material.Neon
-SafeB.Position = Vector3.new(0, 99999, 0)
-SafeB.Parent = WS
-
-local function anchorP()
+local function pullAllInFront()
     local ch = LP.Character
-    if not ch then return end
-    local hrp = ch:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local h = ch:FindFirstChildOfClass("Humanoid")
-    if h then
-        h.WalkSpeed = 0
-        h.JumpPower = 0
-        h.PlatformStand = false
+    local myRoot = ch and ch:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return {} end
+
+    local captured = {}
+    local alivePlayers = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
+            local tr = p.Character:FindFirstChild("HumanoidRootPart")
+            local th = p.Character:FindFirstChildOfClass("Humanoid")
+            if tr and th and th.Health > 0 then
+                table.insert(alivePlayers, { player = p, root = tr, hum = th })
+            end
+        end
     end
-    hrp.Anchored = true
+    if #alivePlayers == 0 then return {} end
+
+    local lookVec = myRoot.CFrame.LookVector
+    lookVec = Vector3.new(lookVec.X, 0, lookVec.Z)
+    if lookVec.Magnitude < 0.1 then
+        lookVec = Vector3.new(0, 0, -1)
+    else
+        lookVec = lookVec.Unit
+    end
+    pcall(function()
+        myRoot.CFrame = CFrame.new(myRoot.Position, myRoot.Position + lookVec)
+    end)
+
+    local frontDist = math.clamp(A.KillFrontDist or 3, 2, 6)
+    local frontPos = myRoot.Position + lookVec * frontDist
+    local baseRad = math.clamp(A.KillFrontRadius or 1.0, 0.5, 2.5)
+    local rad = math.clamp(baseRad + #alivePlayers * 0.15, baseRad, 2.5)
+
+    for i, c in ipairs(alivePlayers) do
+        local angle = ((i - 1) / math.max(#alivePlayers, 1)) * math.pi * 2
+        local pos = frontPos + Vector3.new(
+            math.cos(angle) * rad,
+            0,
+            math.sin(angle) * rad
+        )
+        pcall(function()
+            c.root.Anchored = true
+            c.root.CFrame = CFrame.new(pos, pos - lookVec * 5)
+            c.hum.WalkSpeed = 0
+            c.hum.JumpPower = 0
+            c.hum.PlatformStand = true
+            for _, pt in ipairs(c.player.Character:GetChildren()) do
+                if pt:IsA("BasePart") then pt.Anchored = true end
+            end
+        end)
+        table.insert(captured, c)
+    end
+    return captured
 end
 
-task.spawn(function()
-    while true do
-        task.wait(0.3)
-        pcall(function()
-            if not A.AutoEngageEnabled then
-                A.AutoEngageKilled = false
-                A.AutoEngageKilling = false
-                return
+local function equipKnife()
+    pcall(function()
+        local ch = LP.Character
+        if not ch then return false end
+        local h = ch:FindFirstChildOfClass("Humanoid")
+        local bp = LP:FindFirstChildOfClass("Backpack")
+        if not h then return false end
+        if ch:FindFirstChildOfClass("Tool") then return true end
+        if bp then
+            for _, tool in ipairs(bp:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local n = tool.Name:lower()
+                    if n:find("knife") or n:find("sword") or n:find("blade") or n:find("dagger") then
+                        pcall(function() h:EquipTool(tool) end)
+                        task.wait(0.1)
+                        return true
+                    end
+                end
             end
-            if not A.RoundActive then
-                A.AutoEngageKilled = false
-                A.AutoEngageKilling = false
-                SafeB.Position = Vector3.new(0, 99999, 0)
-                return
-            end
-            if A.MyRole ~= "Murderer" then
-                A.AutoEngageKilling = false
-                return
-            end
-            if A.AutoEngageKilling then
-                local ch = LP.Character
-                if not ch then return end
-                local h = ch:FindFirstChildOfClass("Humanoid")
-                if not h or h.Health <= 0 then return end
-                local hrp = ch:FindFirstChild("HumanoidRootPart")
-                if hrp and SafeB then hrp.CFrame = CFrame.new(SafeB.Position + Vector3.new(0, 5, 0)) end
-                pcall(pullAll) task.wait(0.15)
-                pcall(equipK) task.wait(0.1)
-                pcall(atkAll) task.wait(0.15)
-                pcall(killRem) task.wait(0.15)
-                pcall(unfreezeAll)
-                return
-            end
-            local needCoins = A.TargetCoins or 50
-            if needCoins < 1 then needCoins = 50 end
-            if (A.MinCoinsBeforeKill or 0) > 0 and A.MinCoinsBeforeKill < needCoins then
-                needCoins = A.MinCoinsBeforeKill
-            end
-            if (A.CollectedCoins or 0) < needCoins then return end
-            A.AutoEngageKilling = true
-            A.AutoEngageKilled = true
-            if CurTween then CurTween:Cancel() CurTween = nil end
-            Plat.CFrame = CFrame.new(0, 99999, 0)
-            FarmBaseY = nil
-            stopVG()
-            local ch = LP.Character
-            local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local p = hrp.Position
-                SafeB.Size = Vector3.new(40, 3, 40)
-                SafeB.Position = Vector3.new(p.X, p.Y - 4, p.Z)
-            end
-            anchorP()
-            pcall(pullAll) task.wait(0.15)
-            pcall(equipK) task.wait(0.1)
-            pcall(atkAll) task.wait(0.15)
-            pcall(killRem) task.wait(0.15)
-            pcall(unfreezeAll)
-        end)
-    end
-end)
+        end
+    end)
+    return false
+end
 
-LP.CharacterAdded:Connect(function()
-    LastRespawn = tick()
-    FarmBaseY = nil
-    task.wait(1)
-    if not A.AutoEngageKilling then SafeB.Position = Vector3.new(0, 99999, 0) end
-end)
+-- ═══════════════════════════════════════════════════════════════
+-- AUTO KILL
+-- ═══════════════════════════════════════════════════════════════
+local function killLoop()
+    if KillLoopRunning then return end
+    KillLoopRunning = true
+    while A.KillEnabled do
+        task.wait(0.15)
+        if SafeZoneActive then task.wait(0.4) continue end
+        if not A.RoundActive then task.wait(0.4) continue end
+
+        local role = checkRoleFromTools()
+        if role then A.MyRole = role end
+        if A.MyRole ~= "Murderer" then task.wait(0.4) continue end
+        if A.KillRequireFarm and not A.FarmEnabled then task.wait(0.4) continue end
+
+        local target = A.TargetCoins or 50
+        local current = A.CollectedCoins or 0
+        if current < target then task.wait(0.3) continue end
+        if A.KillNeedAllCoins and hasCoinsLeft() then task.wait(0.3) continue end
+
+        local ch = LP.Character
+        if not ch then task.wait(0.3) continue end
+        local h = ch:FindFirstChildOfClass("Humanoid")
+        if not h or h.Health <= 0 then task.wait(0.3) continue end
+        local myRoot = ch:FindFirstChild("HumanoidRootPart")
+        if not myRoot then task.wait(0.3) continue end
+
+        equipKnife()
+        task.wait(0.1)
+
+        local captured = pullAllInFront()
+        if #captured == 0 then task.wait(0.4) continue end
+
+        A.CurrentKillTarget = "TARGETS(" .. #captured .. ")"
+        if UiCallbacks.onKillStart then UiCallbacks.onKillStart() end
+
+        for i = 1, (A.KillAttackCount or 25) do
+            if not A.KillEnabled or not A.RoundActive then break end
+            local alive = 0
+            for _, c in ipairs(captured) do
+                if c.hum and c.hum.Parent and c.hum.Health > 0 then alive = alive + 1 end
+            end
+            if alive == 0 then break end
+
+            local tool = ch:FindFirstChildOfClass("Tool")
+            if tool then pcall(function() tool:Activate() end) end
+            pcall(function()
+                VU:CaptureController()
+                VU:ClickButton1(Vector2.new(500, 500))
+            end)
+            task.wait(A.KillClickDelay or 0.05)
+        end
+
+        for _, c in ipairs(captured) do
+            pcall(function()
+                if c.hum then
+                    c.hum.WalkSpeed = 16
+                    c.hum.JumpPower = 50
+                    c.hum.PlatformStand = false
+                end
+                if c.root then c.root.Anchored = false end
+                if c.player and c.player.Character then
+                    for _, pt in ipairs(c.player.Character:GetChildren()) do
+                        if pt:IsA("BasePart") then pt.Anchored = false end
+                    end
+                end
+            end)
+        end
+
+        A.CurrentKillTarget = nil
+        task.wait(A.KillTargetDelay or 0.4)
+    end
+    KillLoopRunning = false
+    A.CurrentKillTarget = nil
+end
 
 -- ═══════════════════════════════════════════════════════════════
 -- ROLE DETECT
@@ -481,39 +710,15 @@ local function applyRole(n, i)
     if n == LP.Name then A.MyRole = (i and i.Role) or "Innocent" end
 end
 
-local function detectR(p)
-    local ch = p.Character
-    if not ch then return nil end
-    local t = ch:FindFirstChildOfClass("Tool")
-    if not t then return nil end
-    local n = t.Name:lower()
-    if n:find("knife") or n:find("sword") or n:find("blade") then return "Murderer" end
-    if n:find("gun") or n:find("revolver") or n:find("pistol") then return "Sheriff" end
-end
-
 task.spawn(function()
     while true do
-        task.wait(0.5)
+        task.wait(0.4)
         pcall(function()
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LP then
-                    local ex = RoleData[p.Name]
-                    if not ex or not ex.Role or ex.Role == "Unknown" then
-                        local r = detectR(p)
-                        if r then RoleData[p.Name] = { Role = r }
-                        elseif A.RoundActive then RoleData[p.Name] = { Role = "Innocent" } end
-                    end
-                end
-            end
-            if A.RoundActive then
-                local mc = LP.Character
-                if mc then
-                    local mt = mc:FindFirstChildOfClass("Tool")
-                    if mt then
-                        local n = mt.Name:lower()
-                        if n:find("knife") or n:find("sword") then A.MyRole = "Murderer"
-                        elseif n:find("gun") or n:find("revolver") then A.MyRole = "Sheriff" end
-                    end
+            if A.RoundActive and (A.MyRole == "Unknown" or A.MyRole == "Innocent") then
+                local role = checkRoleFromTools()
+                if role then A.MyRole = role
+                elseif tick() - (A.RoundStartTime or 0) > 6 and A.MyRole == "Unknown" then
+                    A.MyRole = "Innocent"
                 end
             end
         end)
@@ -521,180 +726,22 @@ task.spawn(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════
--- 👁️ ESP ROLES
+-- SAFE ZONE MONITOR
 -- ═══════════════════════════════════════════════════════════════
-local ESPFolder = Instance.new("Folder")
-ESPFolder.Name = "AMT_ESP"
-ESPFolder.Parent = WS
-
-local function roleColor(r)
-    if r == "Murderer" then return Color3.fromRGB(255, 50, 50)
-    elseif r == "Sheriff" then return Color3.fromRGB(50, 180, 255)
-    elseif r == "Innocent" then return Color3.fromRGB(80, 220, 120) end
-    return Color3.fromRGB(180, 180, 180)
-end
-
-local function roleTag(r)
-    if r == "Murderer" then return "🔪"
-    elseif r == "Sheriff" then return "🔫"
-    elseif r == "Innocent" then return "😇" end
-    return "❓"
-end
-
-local function createESP(p)
-    if p == LP or ESPObj[p] then return end
-    local h = Instance.new("Highlight")
-    h.FillTransparency = 0.5
-    h.OutlineTransparency = 0
-    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    h.Parent = ESPFolder
-    local bb = Instance.new("BillboardGui")
-    bb.Size = UDim2.new(0, 200, 0, 40)
-    bb.StudsOffset = Vector3.new(0, 3, 0)
-    bb.AlwaysOnTop = true
-    bb.MaxDistance = 500
-    bb.Parent = ESPFolder
-    local tl = Instance.new("TextLabel")
-    tl.Size = UDim2.new(1, 0, 1, 0)
-    tl.BackgroundTransparency = 1
-    tl.TextSize = 14
-    tl.Font = Enum.Font.GothamBold
-    tl.TextStrokeTransparency = 0
-    tl.TextStrokeColor3 = Color3.new(0, 0, 0)
-    tl.Parent = bb
-    ESPObj[p] = { h = h, b = bb, t = tl }
-end
-
-local function removeESP(p)
-    if ESPObj[p] then
+task.spawn(function()
+    while true do
+        task.wait(1)
         pcall(function()
-            ESPObj[p].h:Destroy()
-            ESPObj[p].b:Destroy()
+            if not A.SafeZoneEnabled or SafeZoneActive or not A.RoundActive then return end
+            local role = checkRoleFromTools()
+            if role then A.MyRole = role end
+            if role == "Murderer" then return end
+            if A.MyRole ~= "Innocent" and A.MyRole ~= "Sheriff" then return end
+            local cur, tgt = A.CollectedCoins or 0, A.TargetCoins or 50
+            if cur < tgt or cur <= 0 then return end
+            if hasCoinsLeft() then return end
+            goSafeZone()
         end)
-        ESPObj[p] = nil
-    end
-end
-
-local function updateESP()
-    for p, o in pairs(ESPObj) do
-        if not p.Parent then
-            removeESP(p)
-        else
-            local ch = p.Character
-            local role = RoleData[p.Name] and RoleData[p.Name].Role or "Unknown"
-            if A.ESPEnabled and ch and ch:FindFirstChild("HumanoidRootPart") then
-                local col = roleColor(role)
-                o.h.Adornee = ch
-                o.h.FillColor = col
-                o.h.OutlineColor = col
-                o.h.Enabled = true
-                o.b.Adornee = ch.HumanoidRootPart
-                o.b.Enabled = true
-                o.t.Text = roleTag(role) .. " " .. p.Name
-                o.t.TextColor3 = col
-            else
-                o.h.Enabled = false
-                o.b.Enabled = false
-            end
-        end
-    end
-end
-
-task.spawn(function()
-    while true do
-        task.wait(0.2)
-        pcall(updateESP)
-    end
-end)
-
--- ═══════════════════════════════════════════════════════════════
--- 🎯 SMART TARGETING + AUTO FIGHT
--- ═══════════════════════════════════════════════════════════════
-local function getTargets()
-    local targets = {}
-    if A.MyRole == "Sheriff" then
-        for n, info in pairs(RoleData) do
-            if info.Role == "Murderer" then
-                local p = Players:FindFirstChild(n)
-                if p and p ~= LP and p.Character then
-                    local h = p.Character:FindFirstChildOfClass("Humanoid")
-                    if h and h.Health > 0 then table.insert(targets, p) end
-                end
-            end
-        end
-    elseif A.MyRole == "Murderer" then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LP and p.Character then
-                local h = p.Character:FindFirstChildOfClass("Humanoid")
-                if h and h.Health > 0 then table.insert(targets, p) end
-            end
-        end
-    end
-    return targets
-end
-
-local function findGun()
-    local ch = LP.Character
-    if not ch then return nil end
-    local gun = ch:FindFirstChild("Gun")
-    if gun then return gun end
-    local bp = LP:FindFirstChildOfClass("Backpack")
-    if bp then
-        for _, t in ipairs(bp:GetChildren()) do
-            if t:IsA("Tool") then
-                local n = t.Name:lower()
-                if n:find("gun") or n:find("revolver") or n:find("pistol") then
-                    return t
-                end
-            end
-        end
-    end
-    return nil
-end
-
-task.spawn(function()
-    while true do
-        task.wait(0.1)
-        if not A.AutoFight or not A.RoundActive then continue end
-        if A.AutoEngageKilling then continue end
-        if A.MyRole ~= "Sheriff" and A.MyRole ~= "Murderer" then continue end
-
-        local ch = LP.Character
-        local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-        local h = ch and ch:FindFirstChildOfClass("Humanoid")
-        if not hrp or not h or h.Health <= 0 then continue end
-
-        local targets = getTargets()
-        if #targets == 0 then continue end
-
-        if A.MyRole == "Sheriff" then
-            local gun = findGun()
-            if gun and gun.Parent ~= ch then
-                pcall(function() h:EquipTool(gun) end)
-            end
-            local target = targets[1]
-            local tr = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-            if tr then
-                local cam = workspace.CurrentCamera
-                cam.CFrame = CFrame.lookAt(cam.CFrame.Position, tr.Position)
-                pcall(function()
-                    VU:CaptureController()
-                    VU:ClickButton1(Vector2.new(500, 500))
-                end)
-            end
-        elseif A.MyRole == "Murderer" then
-            local mt = ch:FindFirstChildOfClass("Tool")
-            if not mt then pcall(equipK) end
-            if killEvent then
-                for _, p in ipairs(targets) do
-                    pcall(function() killEvent:FireServer(p.Name) end)
-                end
-            end
-            pcall(function()
-                VU:CaptureController()
-                VU:ClickButton1(Vector2.new(500, 500))
-            end)
-        end
     end
 end)
 
@@ -704,534 +751,1001 @@ end)
 pcall(function()
     RS.Remotes.Gameplay.RoundStart.OnClientEvent:Connect(function(t, pd)
         if type(pd) == "table" then for n, i in pairs(pd) do applyRole(n, i) end end
-        A.RoundActive = true
-        A.CollectedCoins = 0
-        A.AutoEngageKilled = false
-        A.AutoEngageKilling = false
-        CCO = {} CoinCache = {} CoinCacheTime = 0 FailedCoins = {} FarmBaseY = nil
+        A.RoundActive, A.CollectedCoins, A.TargetKnown = true, 0, false
+        A.RoundStartTime = tick()
+        CCO, CoinCache, FailedCoins = {}, {}, {}
+        CoinCacheTime, LastFailedClear = 0, 0
         LastRespawn = tick()
-        print("[AMT] 🟢 IN GAME")
+        releasePlayer()
+        cleanupSafeBlocks()
+        SafeZoneActive = false
     end)
 end)
-
 pcall(function()
     RS.Remotes.Gameplay.CoinCollected.OnClientEvent:Connect(function(ct, c, t, e)
-        A.CollectedCoins = c A.TargetCoins = t
+        A.CollectedCoins = c or 0
+        if t and t > 0 then A.TargetCoins = t A.TargetKnown = true end
     end)
 end)
-
 pcall(function()
     RS.Remotes.Gameplay.RoundEndFade.OnClientEvent:Connect(function()
-        A.RoundActive = false
+        A.RoundActive, A.MyRole = false, "Unknown"
         RoleData = {}
-        A.MyRole = "Unknown"
-        A.AutoEngageKilled = false
-        A.AutoEngageKilling = false
         if CurTween then CurTween:Cancel() CurTween = nil end
-        Plat.CFrame = CFrame.new(0, 99999, 0)
-        SafeB.Position = Vector3.new(0, 99999, 0)
-        FarmBaseY = nil
         stopVG()
-        unfreezeAll()
-        CoinCache = {} FailedCoins = {}
-        print("[AMT] 🔴 LOBBY — armed: " .. tostring(A.AutoEnabled))
+        CoinCache, FailedCoins = {}, {}
+        exitSafeZone()
+        cleanupSafeBlocks()
+        cleanupUIEffects()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP and p.Character then
+                pcall(function()
+                    local h = p.Character:FindFirstChildOfClass("Humanoid")
+                    if h then
+                        h.WalkSpeed = 16
+                        h.JumpPower = 50
+                        h.PlatformStand = false
+                    end
+                    for _, pt in ipairs(p.Character:GetChildren()) do
+                        if pt:IsA("BasePart") then pt.Anchored = false end
+                    end
+                end)
+            end
+        end
+        task.wait(0.3)
+        if not A.FarmEnabled then holdPlayer() end
     end)
 end)
 
--- ═══════════════════════════════════════════════════════════════
--- ANTI-IDLE
--- ═══════════════════════════════════════════════════════════════
+LP.CharacterAdded:Connect(function()
+    LastRespawn = tick()
+    if SafeZoneActive then exitSafeZone() end
+    task.wait(0.5)
+    if not A.FarmEnabled then holdPlayer() end
+end)
 LP.Idled:Connect(function()
     VU:CaptureController()
     VU:ClickButton2(Vector2.new())
 end)
 
 -- ═══════════════════════════════════════════════════════════════
--- STATE INDICATOR (3 حالات + Auto Fight)
+-- UI v4.1 — Arkon Premium
 -- ═══════════════════════════════════════════════════════════════
-local StateGUI = Instance.new("ScreenGui")
-StateGUI.Name = "AMT_State"
-StateGUI.ResetOnSpawn = false
-StateGUI.IgnoreGuiInset = true
-StateGUI.DisplayOrder = 999999
-safeParent(StateGUI)
+local gui = Instance.new("ScreenGui")
+gui.Name = "Arkon_UI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 999999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+safeParent(gui)
+FX.GUIRef = gui
 
-local StateFrame = Instance.new("Frame")
-StateFrame.Size = UDim2.new(0, 260, 0, 44)
-StateFrame.Position = UDim2.new(0.5, -130, 0, 10)
-StateFrame.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
-StateFrame.BorderSizePixel = 0
-StateFrame.Parent = StateGUI
-Instance.new("UICorner", StateFrame).CornerRadius = UDim.new(0, 22)
+local C_BG      = Color3.fromRGB(13, 9, 6)
+local C_BG2     = Color3.fromRGB(26, 19, 11)
+local C_CARD    = Color3.fromRGB(42, 30, 18)
+local C_CARD2   = Color3.fromRGB(58, 40, 22)
+local C_ACCENT  = Color3.fromHex("#FF8C00")
+local C_ACCENT2 = Color3.fromHex("#FFB347")
+local C_TEXT    = Color3.fromRGB(250, 245, 236)
+local C_MUTED   = Color3.fromRGB(200, 178, 150)
+local C_DIM     = Color3.fromRGB(120, 105, 90)
+local C_RED     = Color3.fromRGB(232, 65, 65)
+local C_RED_D   = Color3.fromRGB(130, 28, 28)
+local C_GREEN   = Color3.fromRGB(61, 220, 132)
+local C_GREEN_D = Color3.fromRGB(30, 130, 70)
+local C_BLUE    = Color3.fromRGB(90, 175, 255)
+local C_YELLOW  = Color3.fromRGB(255, 200, 60)
+local C_PURPLE  = Color3.fromRGB(180, 100, 255)
 
-local StateStroke = Instance.new("UIStroke", StateFrame)
-StateStroke.Color = Color3.fromRGB(255, 90, 90)
-StateStroke.Thickness = 2
+local function corner(p, r)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, r or 12)
+    c.Parent = p
+    return c
+end
+local function stroke(p, col, th, tr)
+    local s = Instance.new("UIStroke")
+    s.Color = col or C_ACCENT
+    s.Thickness = th or 1.5
+    s.Transparency = tr or 0.3
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = p
+    return s
+end
+local function grad(p, c1, c2, rot)
+    local g = Instance.new("UIGradient")
+    g.Color = ColorSequence.new(c1, c2)
+    g.Rotation = rot or 90
+    g.Parent = p
+    return g
+end
+local function pressScale(btn)
+    local sc = Instance.new("UIScale")
+    sc.Scale = 1
+    sc.Parent = btn
+    btn.MouseButton1Down:Connect(function()
+        TS:Create(sc, TweenInfo.new(0.08), {Scale = 0.94}):Play()
+    end)
+    btn.MouseButton1Up:Connect(function()
+        TS:Create(sc, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+    end)
+end
 
-local StateLabel = Instance.new("TextLabel")
-StateLabel.Size = UDim2.new(1, 0, 1, 0)
-StateLabel.BackgroundTransparency = 1
-StateLabel.Text = "🔴 OFF"
-StateLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-StateLabel.TextSize = 14
-StateLabel.Font = Enum.Font.GothamBlack
-StateLabel.Parent = StateFrame
+local frame = Instance.new("Frame")
+frame.Name = "ArkonFrame"
+frame.Size = UDim2.new(0, 300, 0, 340)
+frame.Position = UDim2.new(0, 30, 0, 100)
+frame.BackgroundColor3 = C_BG
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.ClipsDescendants = true
+frame.Parent = gui
+corner(frame, 18)
+stroke(frame, C_ACCENT, 2, 0.45)
 
-local function getState()
-    local fight = A.AutoFight and " ⚔️" or ""
-    if not A.AutoEnabled then
-        return "🔴 OFF" .. fight, Color3.fromRGB(120, 30, 30), Color3.fromRGB(255, 90, 90)
-    elseif not A.RoundActive then
-        return "🟡 ARMED (LOBBY)" .. fight, Color3.fromRGB(120, 90, 20), Color3.fromRGB(255, 200, 60)
+local bgGrad = Instance.new("UIGradient")
+bgGrad.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, C_BG2),
+    ColorSequenceKeypoint.new(0.5, C_BG),
+    ColorSequenceKeypoint.new(1, C_BG2),
+}
+bgGrad.Rotation = 135
+bgGrad.Parent = frame
+
+local shine = Instance.new("Frame")
+shine.Size = UDim2.new(1, 0, 0, 1)
+shine.BackgroundColor3 = C_ACCENT2
+shine.BorderSizePixel = 0
+shine.Parent = frame
+local shineG = Instance.new("UIGradient")
+shineG.Transparency = NumberSequence.new{
+    NumberSequenceKeypoint.new(0, 1),
+    NumberSequenceKeypoint.new(0.35, 0.15),
+    NumberSequenceKeypoint.new(0.65, 0.15),
+    NumberSequenceKeypoint.new(1, 1),
+}
+shineG.Parent = shine
+
+-- Drag
+do
+    local dg, di, ds, sp
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dg = true ds = input.Position sp = frame.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dg = false end end)
+        end
+    end)
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then di = input end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if input == di and dg then
+            local d = input.Position - ds
+            frame.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
+        end
+    end)
+end
+
+-- HEADER
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 54)
+header.BackgroundTransparency = 1
+header.Parent = frame
+
+local logoBg = Instance.new("Frame")
+logoBg.Size = UDim2.new(0, 36, 0, 36)
+logoBg.Position = UDim2.new(0, 14, 0.5, -18)
+logoBg.BackgroundColor3 = C_BG2
+logoBg.BorderSizePixel = 0
+logoBg.ClipsDescendants = true
+logoBg.Parent = header
+corner(logoBg, 10)
+
+local logoGlow = Instance.new("UIStroke")
+logoGlow.Color = C_ACCENT2
+logoGlow.Thickness = 3
+logoGlow.Transparency = 0.55
+logoGlow.Parent = logoBg
+
+local logoImg = Instance.new("ImageLabel")
+logoImg.Size = UDim2.new(1, -4, 1, -4)
+logoImg.Position = UDim2.new(0, 2, 0, 2)
+logoImg.BackgroundTransparency = 1
+logoImg.Image = LOGO_ID
+logoImg.ScaleType = Enum.ScaleType.Fit
+logoImg.Parent = logoBg
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -180, 0, 20)
+title.Position = UDim2.new(0, 58, 0, 10)
+title.BackgroundTransparency = 1
+title.Text = "ARKON"
+title.TextColor3 = C_TEXT
+title.TextSize = 18
+title.Font = Enum.Font.GothamBlack
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = header
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -180, 0, 12)
+subtitle.Position = UDim2.new(0, 58, 0, 30)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Premium Auto v4.1"
+subtitle.TextColor3 = C_MUTED
+subtitle.TextSize = 10
+subtitle.Font = Enum.Font.GothamMedium
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = header
+
+local roleBadge = Instance.new("Frame")
+roleBadge.Size = UDim2.new(0, 64, 0, 20)
+roleBadge.Position = UDim2.new(1, -140, 0, 18)
+roleBadge.BackgroundColor3 = C_DIM
+roleBadge.BackgroundTransparency = 0.85
+roleBadge.BorderSizePixel = 0
+roleBadge.Parent = header
+corner(roleBadge, 10)
+local roleStroke = stroke(roleBadge, C_DIM, 1, 0.5)
+
+local roleText = Instance.new("TextLabel")
+roleText.Size = UDim2.new(1, 0, 1, 0)
+roleText.BackgroundTransparency = 1
+roleText.Text = "IDLE"
+roleText.TextColor3 = C_DIM
+roleText.TextSize = 9
+roleText.Font = Enum.Font.GothamBold
+roleText.Parent = roleBadge
+
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0, 26, 0, 26)
+minBtn.Position = UDim2.new(1, -70, 0, 15)
+minBtn.BackgroundColor3 = C_CARD
+minBtn.Text = "−"
+minBtn.TextColor3 = C_MUTED
+minBtn.TextSize = 18
+minBtn.Font = Enum.Font.GothamBold
+minBtn.BorderSizePixel = 0
+minBtn.AutoButtonColor = false
+minBtn.Parent = header
+corner(minBtn, 8)
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 26, 0, 26)
+closeBtn.Position = UDim2.new(1, -38, 0, 15)
+closeBtn.BackgroundColor3 = Color3.fromRGB(70, 25, 25)
+closeBtn.Text = "×"
+closeBtn.TextColor3 = C_RED
+closeBtn.TextSize = 18
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.BorderSizePixel = 0
+closeBtn.AutoButtonColor = false
+closeBtn.Parent = header
+corner(closeBtn, 8)
+
+local miniBar = Instance.new("Frame")
+miniBar.Size = UDim2.new(1, -28, 0, 3)
+miniBar.Position = UDim2.new(0, 14, 1, -6)
+miniBar.BackgroundColor3 = Color3.fromRGB(45, 32, 20)
+miniBar.BorderSizePixel = 0
+miniBar.Visible = false
+miniBar.Parent = header
+corner(miniBar, 2)
+
+local miniFill = Instance.new("Frame")
+miniFill.Size = UDim2.new(0, 0, 1, 0)
+miniFill.BackgroundColor3 = C_ACCENT
+miniFill.BorderSizePixel = 0
+miniFill.Parent = miniBar
+corner(miniFill, 2)
+local miniGrad = grad(miniFill, C_ACCENT, C_ACCENT2, 0)
+
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(1, -28, 0, 1)
+divider.Position = UDim2.new(0, 14, 0, 54)
+divider.BackgroundColor3 = C_ACCENT
+divider.BackgroundTransparency = 0.85
+divider.BorderSizePixel = 0
+divider.Parent = frame
+
+-- BODY
+local body = Instance.new("Frame")
+body.Size = UDim2.new(1, 0, 0, 0)
+body.Position = UDim2.new(0, 0, 0, 54)
+body.BackgroundTransparency = 1
+body.Parent = frame
+
+local list = Instance.new("UIListLayout")
+list.Padding = UDim.new(0, 8)
+list.SortOrder = Enum.SortOrder.LayoutOrder
+list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+list.Parent = body
+
+local padTop = Instance.new("Frame")
+padTop.Size = UDim2.new(1, 0, 0, 8)
+padTop.BackgroundTransparency = 1
+padTop.LayoutOrder = 0
+padTop.Parent = body
+
+-- COINS CARD
+local progCard = Instance.new("Frame")
+progCard.Size = UDim2.new(1, -24, 0, 64)
+progCard.BackgroundColor3 = C_CARD
+progCard.BorderSizePixel = 0
+progCard.LayoutOrder = 1
+progCard.Parent = body
+corner(progCard, 14)
+stroke(progCard, C_ACCENT, 1.2, 0.6)
+grad(progCard, C_CARD, C_CARD2, 135)
+
+local coinBadge = Instance.new("Frame")
+coinBadge.Size = UDim2.new(0, 30, 0, 30)
+coinBadge.Position = UDim2.new(0, 12, 0, 10)
+coinBadge.BackgroundColor3 = C_ACCENT
+coinBadge.BorderSizePixel = 0
+coinBadge.Parent = progCard
+corner(coinBadge, 9)
+grad(coinBadge, C_ACCENT, C_ACCENT2, 135)
+
+local coinIcon = Instance.new("TextLabel")
+coinIcon.Size = UDim2.new(1, 0, 1, 0)
+coinIcon.BackgroundTransparency = 1
+coinIcon.Text = "💰"
+coinIcon.TextSize = 15
+coinIcon.Parent = coinBadge
+
+local progTitle = Instance.new("TextLabel")
+progTitle.Size = UDim2.new(1, -180, 0, 12)
+progTitle.Position = UDim2.new(0, 50, 0, 12)
+progTitle.BackgroundTransparency = 1
+progTitle.Text = "COINS COLLECTED"
+progTitle.TextColor3 = C_MUTED
+progTitle.TextSize = 10
+progTitle.Font = Enum.Font.GothamBold
+progTitle.TextXAlignment = Enum.TextXAlignment.Left
+progTitle.Parent = progCard
+
+local progCount = Instance.new("TextLabel")
+progCount.Size = UDim2.new(1, -180, 0, 22)
+progCount.Position = UDim2.new(0, 50, 0, 24)
+progCount.BackgroundTransparency = 1
+progCount.Text = "0 / 50"
+progCount.TextColor3 = C_TEXT
+progCount.TextSize = 18
+progCount.Font = Enum.Font.GothamBlack
+progCount.TextXAlignment = Enum.TextXAlignment.Left
+progCount.Parent = progCard
+
+local progPercent = Instance.new("TextLabel")
+progPercent.Size = UDim2.new(0, 76, 0, 28)
+progPercent.Position = UDim2.new(1, -88, 0, 14)
+progPercent.BackgroundTransparency = 1
+progPercent.Text = "0%"
+progPercent.TextColor3 = C_ACCENT
+progPercent.TextSize = 20
+progPercent.Font = Enum.Font.GothamBlack
+progPercent.TextXAlignment = Enum.TextXAlignment.Right
+progPercent.Parent = progCard
+
+local barBG = Instance.new("Frame")
+barBG.Size = UDim2.new(1, -24, 0, 5)
+barBG.Position = UDim2.new(0, 12, 1, -15)
+barBG.BackgroundColor3 = Color3.fromRGB(50, 35, 22)
+barBG.BorderSizePixel = 0
+barBG.ClipsDescendants = true
+barBG.Parent = progCard
+corner(barBG, 3)
+
+local barFill = Instance.new("Frame")
+barFill.Size = UDim2.new(0, 0, 1, 0)
+barFill.BackgroundColor3 = C_ACCENT
+barFill.BorderSizePixel = 0
+barFill.Parent = barBG
+corner(barFill, 3)
+local barGrad = grad(barFill, C_ACCENT, C_ACCENT2, 0)
+
+startShimmer(barBG)
+
+-- SPEED CARD
+local spdCard = Instance.new("Frame")
+spdCard.Size = UDim2.new(1, -24, 0, 44)
+spdCard.BackgroundColor3 = C_CARD
+spdCard.BorderSizePixel = 0
+spdCard.LayoutOrder = 2
+spdCard.Parent = body
+corner(spdCard, 12)
+stroke(spdCard, C_ACCENT, 1.2, 0.7)
+grad(spdCard, C_CARD, C_CARD2, 135)
+
+local spdBadge = Instance.new("Frame")
+spdBadge.Size = UDim2.new(0, 26, 0, 26)
+spdBadge.Position = UDim2.new(0, 10, 0.5, -13)
+spdBadge.BackgroundColor3 = C_CARD2
+spdBadge.BorderSizePixel = 0
+spdBadge.Parent = spdCard
+corner(spdBadge, 7)
+
+local spdIcon = Instance.new("TextLabel")
+spdIcon.Size = UDim2.new(1, 0, 1, 0)
+spdIcon.BackgroundTransparency = 1
+spdIcon.Text = "⚡"
+spdIcon.TextSize = 13
+spdIcon.Parent = spdBadge
+
+local spdTitle = Instance.new("TextLabel")
+spdTitle.Size = UDim2.new(1, -140, 0, 12)
+spdTitle.Position = UDim2.new(0, 44, 0, 8)
+spdTitle.BackgroundTransparency = 1
+spdTitle.Text = "SPEED"
+spdTitle.TextColor3 = C_MUTED
+spdTitle.TextSize = 10
+spdTitle.Font = Enum.Font.GothamBold
+spdTitle.TextXAlignment = Enum.TextXAlignment.Left
+spdTitle.Parent = spdCard
+
+local spdValue = Instance.new("TextLabel")
+spdValue.Size = UDim2.new(1, -140, 0, 18)
+spdValue.Position = UDim2.new(0, 44, 0, 20)
+spdValue.BackgroundTransparency = 1
+spdValue.Text = "16 studs"
+spdValue.TextColor3 = C_TEXT
+spdValue.TextSize = 13
+spdValue.Font = Enum.Font.GothamBold
+spdValue.TextXAlignment = Enum.TextXAlignment.Left
+spdValue.Parent = spdCard
+
+local spdMinus = Instance.new("TextButton")
+spdMinus.Size = UDim2.new(0, 26, 0, 26)
+spdMinus.Position = UDim2.new(1, -64, 0.5, -13)
+spdMinus.BackgroundColor3 = C_CARD2
+spdMinus.Text = "−"
+spdMinus.TextColor3 = C_ACCENT
+spdMinus.TextSize = 18
+spdMinus.Font = Enum.Font.GothamBold
+spdMinus.BorderSizePixel = 0
+spdMinus.AutoButtonColor = false
+spdMinus.Parent = spdCard
+corner(spdMinus, 7)
+stroke(spdMinus, C_ACCENT, 1, 0.7)
+
+local spdPlus = Instance.new("TextButton")
+spdPlus.Size = UDim2.new(0, 26, 0, 26)
+spdPlus.Position = UDim2.new(1, -34, 0.5, -13)
+spdPlus.BackgroundColor3 = C_ACCENT
+spdPlus.Text = "+"
+spdPlus.TextColor3 = Color3.new(1, 1, 1)
+spdPlus.TextSize = 18
+spdPlus.Font = Enum.Font.GothamBold
+spdPlus.BorderSizePixel = 0
+spdPlus.AutoButtonColor = false
+spdPlus.Parent = spdCard
+corner(spdPlus, 7)
+grad(spdPlus, C_ACCENT, C_ACCENT2, 135)
+
+-- SAFE ZONE CARD
+local safeCard = Instance.new("Frame")
+safeCard.Size = UDim2.new(1, -24, 0, 42)
+safeCard.BackgroundColor3 = C_CARD
+safeCard.BorderSizePixel = 0
+safeCard.LayoutOrder = 3
+safeCard.Parent = body
+corner(safeCard, 12)
+local safeStroke = stroke(safeCard, C_GREEN, 1.2, 0.7)
+grad(safeCard, C_CARD, C_CARD2, 135)
+
+local safeBadge = Instance.new("Frame")
+safeBadge.Size = UDim2.new(0, 24, 0, 24)
+safeBadge.Position = UDim2.new(0, 10, 0.5, -12)
+safeBadge.BackgroundColor3 = C_CARD2
+safeBadge.BorderSizePixel = 0
+safeBadge.Parent = safeCard
+corner(safeBadge, 7)
+
+local safeIcon = Instance.new("TextLabel")
+safeIcon.Size = UDim2.new(1, 0, 1, 0)
+safeIcon.BackgroundTransparency = 1
+safeIcon.Text = "🛡️"
+safeIcon.TextSize = 13
+safeIcon.Parent = safeBadge
+
+local safeLabel = Instance.new("TextLabel")
+safeLabel.Size = UDim2.new(1, -120, 0, 14)
+safeLabel.Position = UDim2.new(0, 42, 0, 6)
+safeLabel.BackgroundTransparency = 1
+safeLabel.Text = "SAFE ZONE"
+safeLabel.TextColor3 = C_TEXT
+safeLabel.TextSize = 11
+safeLabel.Font = Enum.Font.GothamBold
+safeLabel.TextXAlignment = Enum.TextXAlignment.Left
+safeLabel.Parent = safeCard
+
+local safeDesc = Instance.new("TextLabel")
+safeDesc.Size = UDim2.new(1, -120, 0, 12)
+safeDesc.Position = UDim2.new(0, 42, 0, 22)
+safeDesc.BackgroundTransparency = 1
+safeDesc.Text = "Hide after coins"
+safeDesc.TextColor3 = C_MUTED
+safeDesc.TextSize = 9
+safeDesc.Font = Enum.Font.GothamMedium
+safeDesc.TextXAlignment = Enum.TextXAlignment.Left
+safeDesc.Parent = safeCard
+
+local toggleBg = Instance.new("TextButton")
+toggleBg.Size = UDim2.new(0, 42, 0, 22)
+toggleBg.Position = UDim2.new(1, -52, 0.5, -11)
+toggleBg.BackgroundColor3 = C_GREEN
+toggleBg.Text = ""
+toggleBg.AutoButtonColor = false
+toggleBg.BorderSizePixel = 0
+toggleBg.Parent = safeCard
+corner(toggleBg, 11)
+
+local toggleKnob = Instance.new("Frame")
+toggleKnob.Size = UDim2.new(0, 16, 0, 16)
+toggleKnob.Position = UDim2.new(1, -19, 0.5, -8)
+toggleKnob.BackgroundColor3 = Color3.new(1, 1, 1)
+toggleKnob.BorderSizePixel = 0
+toggleKnob.Parent = toggleBg
+corner(toggleKnob, 8)
+
+-- FX CARD
+local fxCard = Instance.new("Frame")
+fxCard.Size = UDim2.new(1, -24, 0, 42)
+fxCard.BackgroundColor3 = C_CARD
+fxCard.BorderSizePixel = 0
+fxCard.LayoutOrder = 4
+fxCard.Parent = body
+corner(fxCard, 12)
+local fxStroke = stroke(fxCard, C_PURPLE, 1.2, 0.7)
+grad(fxCard, C_CARD, C_CARD2, 135)
+
+local fxBadge = Instance.new("Frame")
+fxBadge.Size = UDim2.new(0, 24, 0, 24)
+fxBadge.Position = UDim2.new(0, 10, 0.5, -12)
+fxBadge.BackgroundColor3 = C_CARD2
+fxBadge.BorderSizePixel = 0
+fxBadge.Parent = fxCard
+corner(fxBadge, 7)
+
+local fxIcon = Instance.new("TextLabel")
+fxIcon.Size = UDim2.new(1, 0, 1, 0)
+fxIcon.BackgroundTransparency = 1
+fxIcon.Text = "✨"
+fxIcon.TextSize = 13
+fxIcon.Parent = fxBadge
+
+local fxLabel = Instance.new("TextLabel")
+fxLabel.Size = UDim2.new(1, -120, 0, 14)
+fxLabel.Position = UDim2.new(0, 42, 0, 6)
+fxLabel.BackgroundTransparency = 1
+fxLabel.Text = "UI EFFECTS"
+fxLabel.TextColor3 = C_TEXT
+fxLabel.TextSize = 11
+fxLabel.Font = Enum.Font.GothamBold
+fxLabel.TextXAlignment = Enum.TextXAlignment.Left
+fxLabel.Parent = fxCard
+
+local fxDesc = Instance.new("TextLabel")
+fxDesc.Size = UDim2.new(1, -120, 0, 12)
+fxDesc.Position = UDim2.new(0, 42, 0, 22)
+fxDesc.BackgroundTransparency = 1
+fxDesc.Text = "Menu animations only"
+fxDesc.TextColor3 = C_MUTED
+fxDesc.TextSize = 9
+fxDesc.Font = Enum.Font.GothamMedium
+fxDesc.TextXAlignment = Enum.TextXAlignment.Left
+fxDesc.Parent = fxCard
+
+local fxToggle = Instance.new("TextButton")
+fxToggle.Size = UDim2.new(0, 42, 0, 22)
+fxToggle.Position = UDim2.new(1, -52, 0.5, -11)
+fxToggle.BackgroundColor3 = C_PURPLE
+fxToggle.Text = ""
+fxToggle.AutoButtonColor = false
+fxToggle.BorderSizePixel = 0
+fxToggle.Parent = fxCard
+corner(fxToggle, 11)
+
+local fxKnob = Instance.new("Frame")
+fxKnob.Size = UDim2.new(0, 16, 0, 16)
+fxKnob.Position = UDim2.new(1, -19, 0.5, -8)
+fxKnob.BackgroundColor3 = Color3.new(1, 1, 1)
+fxKnob.BorderSizePixel = 0
+fxKnob.Parent = fxToggle
+corner(fxKnob, 8)
+
+-- ACTION BUTTONS
+local btnRow = Instance.new("Frame")
+btnRow.Size = UDim2.new(1, -24, 0, 46)
+btnRow.BackgroundTransparency = 1
+btnRow.LayoutOrder = 5
+btnRow.Parent = body
+
+local farmBtn = Instance.new("TextButton")
+farmBtn.Size = UDim2.new(0.48, 0, 1, 0)
+farmBtn.Position = UDim2.new(0, 0, 0, 0)
+farmBtn.BackgroundColor3 = C_ACCENT
+farmBtn.Text = "▶  FARM"
+farmBtn.TextColor3 = Color3.new(1, 1, 1)
+farmBtn.TextSize = 13
+farmBtn.Font = Enum.Font.GothamBlack
+farmBtn.BorderSizePixel = 0
+farmBtn.AutoButtonColor = false
+farmBtn.Parent = btnRow
+corner(farmBtn, 12)
+local farmGrad = grad(farmBtn, C_ACCENT, C_ACCENT2, 135)
+local farmStroke = stroke(farmBtn, C_ACCENT2, 1.5, 0.5)
+
+local killBtn = Instance.new("TextButton")
+killBtn.Size = UDim2.new(0.48, 0, 1, 0)
+killBtn.Position = UDim2.new(0.52, 0, 0, 0)
+killBtn.BackgroundColor3 = C_RED_D
+killBtn.Text = "🔪  KILL"
+killBtn.TextColor3 = Color3.new(1, 1, 1)
+killBtn.TextSize = 13
+killBtn.Font = Enum.Font.GothamBlack
+killBtn.BorderSizePixel = 0
+killBtn.AutoButtonColor = false
+killBtn.Parent = btnRow
+corner(killBtn, 12)
+local killGrad = grad(killBtn, C_RED_D, Color3.fromRGB(80, 20, 20), 135)
+local killStroke = stroke(killBtn, C_RED, 1.5, 0.5)
+
+-- FOOTER
+local footer = Instance.new("Frame")
+footer.Size = UDim2.new(1, -24, 0, 26)
+footer.BackgroundColor3 = C_CARD
+footer.BackgroundTransparency = 0.4
+footer.BorderSizePixel = 0
+footer.LayoutOrder = 6
+footer.Parent = body
+corner(footer, 8)
+
+local statusDot = Instance.new("Frame")
+statusDot.Size = UDim2.new(0, 7, 0, 7)
+statusDot.Position = UDim2.new(0, 10, 0.5, -3)
+statusDot.BackgroundColor3 = C_DIM
+statusDot.BorderSizePixel = 0
+statusDot.Parent = footer
+corner(statusDot, 99)
+
+local statusTxt = Instance.new("TextLabel")
+statusTxt.Size = UDim2.new(1, -100, 1, 0)
+statusTxt.Position = UDim2.new(0, 24, 0, 0)
+statusTxt.BackgroundTransparency = 1
+statusTxt.Text = "Ready"
+statusTxt.TextColor3 = C_MUTED
+statusTxt.TextSize = 10
+statusTxt.Font = Enum.Font.GothamBold
+statusTxt.TextXAlignment = Enum.TextXAlignment.Left
+statusTxt.Parent = footer
+
+local keybindHint = Instance.new("TextLabel")
+keybindHint.Size = UDim2.new(0, 60, 1, 0)
+keybindHint.Position = UDim2.new(1, -68, 0, 0)
+keybindHint.BackgroundTransparency = 1
+keybindHint.Text = "[RS]"
+keybindHint.TextColor3 = C_DIM
+keybindHint.TextSize = 9
+keybindHint.Font = Enum.Font.GothamMedium
+keybindHint.TextXAlignment = Enum.TextXAlignment.Right
+keybindHint.Parent = footer
+
+local padBot = Instance.new("Frame")
+padBot.Size = UDim2.new(1, 0, 0, 8)
+padBot.BackgroundTransparency = 1
+padBot.LayoutOrder = 7
+padBot.Parent = body
+
+local function recalcSize()
+    local total = 54 + list.AbsoluteContentSize.Y + 10
+    TS:Create(frame, TweenInfo.new(0.28, Enum.EasingStyle.Quart), {
+        Size = UDim2.new(0, 300, 0, total)
+    }):Play()
+end
+task.defer(function() task.wait(0.15) recalcSize() end)
+
+local minimized = false
+minBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    body.Visible = not minimized
+    miniBar.Visible = minimized
+    if minimized then
+        TS:Create(frame, TweenInfo.new(0.28, Enum.EasingStyle.Quart), {
+            Size = UDim2.new(0, 300, 0, 54)
+        }):Play()
+        minBtn.Text = "+"
     else
-        return "🟢 FARMING" .. fight, Color3.fromRGB(30, 120, 40), Color3.fromRGB(120, 255, 140)
+        recalcSize()
+        minBtn.Text = "−"
+    end
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    A.FarmEnabled, A.KillEnabled = false, false
+    if CurTween then CurTween:Cancel() CurTween = nil end
+    stopVG()
+    if SafeZoneActive then exitSafeZone() end
+    cleanupUIEffects()
+    gui:Destroy()
+end)
+
+pressScale(spdMinus)
+pressScale(spdPlus)
+pressScale(farmBtn)
+pressScale(killBtn)
+pressScale(minBtn)
+pressScale(closeBtn)
+
+-- ✅ Callbacks — كلها UI فقط
+UiCallbacks.onCoin = function()
+    if not FX.Enabled or not FX.LegendaryEnabled then return end
+    uiCardFlash(progCard, Color3.fromRGB(255, 220, 100), 0.4)
+    uiFloatText(progCount, "+1", Color3.fromRGB(255, 220, 100), UDim2.new(1, -30, 0, 0))
+end
+
+UiCallbacks.onKillStart = function()
+    if not FX.Enabled or not FX.LegendaryEnabled then return end
+    uiFrameFlash(Color3.fromRGB(232, 65, 65), 0.75, 0.45)
+    uiCardFlash(killBtn, C_RED, 0.6)
+end
+
+UiCallbacks.onSafeStart = function()
+    if not FX.Enabled or not FX.LegendaryEnabled then return end
+    uiFrameFlash(Color3.fromRGB(60, 220, 130), 0.75, 0.5)
+    uiCardFlash(safeCard, C_GREEN, 0.8)
+end
+
+-- Toggle SAFE
+local lastToggleState = A.SafeZoneEnabled
+local function applySafeToggle()
+    TS:Create(toggleBg, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {
+        BackgroundColor3 = A.SafeZoneEnabled and C_GREEN or C_DIM
+    }):Play()
+    TS:Create(toggleKnob, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {
+        Position = A.SafeZoneEnabled and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+    }):Play()
+end
+toggleBg.MouseButton1Click:Connect(function()
+    A.SafeZoneEnabled = not A.SafeZoneEnabled
+    if not A.SafeZoneEnabled and SafeZoneActive then exitSafeZone() end
+end)
+
+-- Toggle FX
+local lastFxState = FX.Enabled
+local function applyFxToggle()
+    local en = FX.Enabled
+    TS:Create(fxToggle, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {
+        BackgroundColor3 = en and C_PURPLE or C_DIM
+    }):Play()
+    TS:Create(fxKnob, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {
+        Position = en and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+    }):Play()
+end
+fxToggle.MouseButton1Click:Connect(function()
+    FX.Enabled = not FX.Enabled
+    FX.TrailEnabled = FX.Enabled
+    FX.LegendaryEnabled = FX.Enabled
+    applyFxToggle()
+    lastFxState = FX.Enabled
+end)
+
+local function updateProgress()
+    local cur = A.CollectedCoins or 0
+    local tgt = math.max(A.TargetCoins or 50, 1)
+    local ratio = math.clamp(cur / tgt, 0, 1)
+    progCount.Text = cur .. " / " .. tgt
+    progPercent.Text = math.floor(ratio * 100) .. "%"
+    TS:Create(barFill, TweenInfo.new(0.5, Enum.EasingStyle.Quart), {
+        Size = UDim2.new(ratio, 0, 1, 0)
+    }):Play()
+    TS:Create(miniFill, TweenInfo.new(0.5, Enum.EasingStyle.Quart), {
+        Size = UDim2.new(ratio, 0, 1, 0)
+    }):Play()
+    if ratio >= 1 then
+        barGrad.Color = ColorSequence.new(C_GREEN, Color3.fromRGB(100, 255, 160))
+        miniGrad.Color = ColorSequence.new(C_GREEN, Color3.fromRGB(100, 255, 160))
+        progPercent.TextColor3 = C_GREEN
+    else
+        barGrad.Color = ColorSequence.new(C_ACCENT, C_ACCENT2)
+        miniGrad.Color = ColorSequence.new(C_ACCENT, C_ACCENT2)
+        progPercent.TextColor3 = C_ACCENT
     end
 end
 
+farmBtn.MouseButton1Click:Connect(function()
+    A.FarmEnabled = not A.FarmEnabled
+    if A.FarmEnabled then
+        releasePlayer()
+        CoinCache, FailedCoins = {}, {}
+        CoinCacheTime, LastFailedClear = 0, 0
+        task.spawn(farmLoop)
+    else
+        if CurTween then CurTween:Cancel() CurTween = nil end
+        stopVG()
+        if not SafeZoneActive then holdPlayer() end
+    end
+end)
+killBtn.MouseButton1Click:Connect(function()
+    A.KillEnabled = not A.KillEnabled
+    if A.KillEnabled then
+        releasePlayer()
+        task.spawn(killLoop)
+    end
+end)
+spdMinus.MouseButton1Click:Connect(function()
+    A.SpeedValue = math.clamp((A.SpeedValue or 16) - 1, SPEED_MIN, SPEED_MAX)
+    spdValue.Text = A.SpeedValue .. " studs"
+end)
+spdPlus.MouseButton1Click:Connect(function()
+    A.SpeedValue = math.clamp((A.SpeedValue or 16) + 1, SPEED_MIN, SPEED_MAX)
+    spdValue.Text = A.SpeedValue .. " studs"
+end)
+
 task.spawn(function()
-    while true do
-        task.wait(0.3)
+    while frame.Parent do
+        task.wait(0.15)
         pcall(function()
-            local txt, bg, st = getState()
-            StateFrame.BackgroundColor3 = bg
-            StateStroke.Color = st
-            StateLabel.Text = txt
+            spdValue.Text = A.SpeedValue .. " studs"
+            updateProgress()
+
+            local rl = A.MyRole or "Unknown"
+            local rc, rt = C_DIM, "IDLE"
+            if A.RoundActive then
+                if rl == "Murderer" then rc, rt = C_RED, "MURDERER"
+                elseif rl == "Sheriff" then rc, rt = C_BLUE, "SHERIFF"
+                elseif rl == "Innocent" then rc, rt = C_GREEN, "INNOCENT"
+                else rc, rt = C_YELLOW, "PLAYING" end
+            end
+            roleText.Text = rt
+            roleText.TextColor3 = rc
+            roleBadge.BackgroundColor3 = rc
+            roleStroke.Color = rc
+
+            logoGlow.Transparency = 0.4 + math.abs(math.sin(tick() * 2)) * 0.3
+
+            -- Safe zone glow when active
+            if SafeZoneActive then
+                safeStroke.Transparency = 0.2 + math.abs(math.sin(tick() * 4)) * 0.3
+                safeStroke.Thickness = 2
+            else
+                safeStroke.Transparency = 0.7
+                safeStroke.Thickness = 1.2
+            end
+
+            if A.SafeZoneEnabled ~= lastToggleState then
+                lastToggleState = A.SafeZoneEnabled
+                applySafeToggle()
+            end
+            if FX.Enabled ~= lastFxState then
+                lastFxState = FX.Enabled
+                applyFxToggle()
+            end
+
+            if A.FarmEnabled then
+                if SafeZoneActive then
+                    farmBtn.Text = "🛡 SAFE"
+                    farmGrad.Color = ColorSequence.new(C_GREEN, C_GREEN_D)
+                    farmStroke.Color = C_GREEN
+                    statusTxt.Text = "🛡 Safe under map"
+                    statusTxt.TextColor3 = C_GREEN
+                    statusDot.BackgroundColor3 = C_GREEN
+                elseif not A.RoundActive then
+                    farmBtn.Text = "⏸ WAIT"
+                    farmGrad.Color = ColorSequence.new(C_YELLOW, Color3.fromRGB(200, 150, 30))
+                    farmStroke.Color = C_YELLOW
+                    statusTxt.Text = "Waiting for round..."
+                    statusTxt.TextColor3 = C_YELLOW
+                    statusDot.BackgroundColor3 = C_YELLOW
+                else
+                    farmBtn.Text = "⏹ STOP"
+                    farmGrad.Color = ColorSequence.new(C_RED, C_RED_D)
+                    farmStroke.Color = C_RED
+                    statusTxt.Text = "✨ Farming + UI FX"
+                    statusTxt.TextColor3 = C_GREEN
+                    statusDot.BackgroundColor3 = C_GREEN
+                end
+                farmStroke.Transparency = 0.3
+            else
+                farmBtn.Text = "▶  FARM"
+                farmGrad.Color = ColorSequence.new(C_ACCENT, C_ACCENT2)
+                farmStroke.Color = C_ACCENT2
+                farmStroke.Transparency = 0.5
+            end
+
+            if A.KillEnabled then
+                if not A.RoundActive then
+                    killBtn.Text = "⏸ WAIT"
+                    killGrad.Color = ColorSequence.new(Color3.fromRGB(120, 90, 20), Color3.fromRGB(80, 60, 15))
+                    killStroke.Color = C_YELLOW
+                elseif A.MyRole ~= "Murderer" then
+                    killBtn.Text = "✕ NOT MURD"
+                    killGrad.Color = ColorSequence.new(Color3.fromRGB(90, 40, 40), Color3.fromRGB(60, 20, 20))
+                    killStroke.Color = C_RED
+                elseif A.KillRequireFarm and not A.FarmEnabled then
+                    killBtn.Text = "⚠ NEED FARM"
+                    killGrad.Color = ColorSequence.new(C_YELLOW, Color3.fromRGB(180, 140, 20))
+                    killStroke.Color = C_YELLOW
+                elseif (A.CollectedCoins or 0) < (A.TargetCoins or 50) then
+                    killBtn.Text = "⏳ " .. A.CollectedCoins .. "/" .. A.TargetCoins
+                    killGrad.Color = ColorSequence.new(C_YELLOW, Color3.fromRGB(180, 140, 20))
+                    killStroke.Color = C_YELLOW
+                    statusTxt.Text = "Waiting for full coins..."
+                    statusTxt.TextColor3 = C_YELLOW
+                    statusDot.BackgroundColor3 = C_YELLOW
+                elseif A.KillNeedAllCoins and hasCoinsLeft() then
+                    killBtn.Text = "⏳ FINISHING"
+                    killGrad.Color = ColorSequence.new(C_YELLOW, Color3.fromRGB(180, 140, 20))
+                    killStroke.Color = C_YELLOW
+                elseif A.CurrentKillTarget then
+                    killBtn.Text = "🔪 " .. A.CurrentKillTarget
+                    killGrad.Color = ColorSequence.new(C_RED, C_RED_D)
+                    killStroke.Color = C_RED
+                    statusTxt.Text = "Killing in front..."
+                    statusTxt.TextColor3 = C_RED
+                    statusDot.BackgroundColor3 = C_RED
+                else
+                    killBtn.Text = "🔪 KILLING"
+                    killGrad.Color = ColorSequence.new(C_RED, C_RED_D)
+                    killStroke.Color = C_RED
+                end
+                killStroke.Transparency = 0.3
+            else
+                killBtn.Text = "🔪  KILL"
+                killGrad.Color = ColorSequence.new(C_RED_D, Color3.fromRGB(80, 20, 20))
+                killStroke.Color = C_RED
+                killStroke.Transparency = 0.5
+            end
+
+            if not A.FarmEnabled and not A.KillEnabled and not SafeZoneActive then
+                statusTxt.Text = "Ready"
+                statusTxt.TextColor3 = C_MUTED
+                statusDot.BackgroundColor3 = C_DIM
+            end
         end)
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════
--- SIMPLE MENU
--- ═══════════════════════════════════════════════════════════════
-local function buildMenu()
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "AMT_Mini"
-    gui.ResetOnSpawn = false
-    gui.IgnoreGuiInset = true
-    gui.DisplayOrder = 999998
-    safeParent(gui)
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 260, 0, 480)
-    frame.Position = UDim2.new(0, 20, 0, 100)
-    frame.BackgroundColor3 = Color3.fromRGB(15, 10, 5)
-    frame.BackgroundTransparency = 0.08
-    frame.BorderSizePixel = 0
-    frame.Active = true
-    frame.Draggable = true
-    frame.Parent = gui
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 14)
-    local stroke = Instance.new("UIStroke", frame)
-    stroke.Color = OR
-    stroke.Thickness = 2
-    stroke.Transparency = 0.3
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -50, 0, 32)
-    title.Position = UDim2.new(0, 14, 0, 8)
-    title.BackgroundTransparency = 1
-    title.Text = "AMT FARM"
-    title.TextColor3 = OR
-    title.TextSize = 18
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = frame
-
-    local minBtn = Instance.new("TextButton")
-    minBtn.Size = UDim2.new(0, 26, 0, 26)
-    minBtn.Position = UDim2.new(1, -34, 0, 10)
-    minBtn.BackgroundColor3 = Color3.fromRGB(180, 35, 35)
-    minBtn.Text = "–"
-    minBtn.TextColor3 = Color3.new(1, 1, 1)
-    minBtn.TextSize = 16
-    minBtn.Font = Enum.Font.GothamBold
-    minBtn.BorderSizePixel = 0
-    minBtn.Parent = frame
-    Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 7)
-
-    local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, -16, 1, -52)
-    content.Position = UDim2.new(0, 8, 0, 44)
-    content.BackgroundTransparency = 1
-    content.Parent = frame
-
-    local layout = Instance.new("UIListLayout", content)
-    layout.Padding = UDim.new(0, 6)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-
-    minBtn.MouseButton1Click:Connect(function()
-        content.Visible = not content.Visible
-        if content.Visible then
-            frame.Size = UDim2.new(0, 260, 0, 480)
-            minBtn.Text = "–"
-        else
-            frame.Size = UDim2.new(0, 260, 0, 46)
-            minBtn.Text = "+"
-        end
-    end)
-
-    -- FARM toggle
-    local farmBtn = Instance.new("TextButton")
-    farmBtn.Size = UDim2.new(1, 0, 0, 48)
-    farmBtn.BackgroundColor3 = OR
-    farmBtn.Text = "▶  ARM FARM"
-    farmBtn.TextColor3 = Color3.new(1, 1, 1)
-    farmBtn.TextSize = 16
-    farmBtn.Font = Enum.Font.GothamBold
-    farmBtn.BorderSizePixel = 0
-    farmBtn.AutoButtonColor = false
-    farmBtn.LayoutOrder = 1
-    farmBtn.Parent = content
-    Instance.new("UICorner", farmBtn).CornerRadius = UDim.new(0, 10)
-
-    -- Speed row
-    local spdFrame = Instance.new("Frame")
-    spdFrame.Size = UDim2.new(1, 0, 0, 44)
-    spdFrame.BackgroundColor3 = Color3.fromRGB(30, 20, 10)
-    spdFrame.BorderSizePixel = 0
-    spdFrame.LayoutOrder = 2
-    spdFrame.Parent = content
-    Instance.new("UICorner", spdFrame).CornerRadius = UDim.new(0, 10)
-
-    local spdLabel = Instance.new("TextLabel")
-    spdLabel.Size = UDim2.new(1, -100, 1, 0)
-    spdLabel.Position = UDim2.new(0, 12, 0, 0)
-    spdLabel.BackgroundTransparency = 1
-    spdLabel.Text = "Speed: " .. A.SpeedValue
-    spdLabel.TextColor3 = Color3.new(1, 1, 1)
-    spdLabel.TextSize = 14
-    spdLabel.Font = Enum.Font.GothamMedium
-    spdLabel.TextXAlignment = Enum.TextXAlignment.Left
-    spdLabel.Parent = spdFrame
-
-    local function mkSpdBtn(text, dx)
-        local b = Instance.new("TextButton")
-        b.Size = UDim2.new(0, 32, 0, 32)
-        b.Position = UDim2.new(1, dx, 0.5, -16)
-        b.BackgroundColor3 = OR
-        b.Text = text
-        b.TextColor3 = Color3.new(1, 1, 1)
-        b.TextSize = 18
-        b.Font = Enum.Font.GothamBold
-        b.BorderSizePixel = 0
-        b.Parent = spdFrame
-        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-        return b
-    end
-    local minus = mkSpdBtn("–", -76)
-    local plus = mkSpdBtn("+", -38)
-    minus.MouseButton1Click:Connect(function()
-        A.SpeedValue = math.clamp(A.SpeedValue - 5, 5, 100)
-        spdLabel.Text = "Speed: " .. A.SpeedValue
-    end)
-    plus.MouseButton1Click:Connect(function()
-        A.SpeedValue = math.clamp(A.SpeedValue + 5, 5, 100)
-        spdLabel.Text = "Speed: " .. A.SpeedValue
-    end)
-
-    -- ESP toggle
-    local espBtn = Instance.new("TextButton")
-    espBtn.Size = UDim2.new(1, 0, 0, 42)
-    espBtn.BackgroundColor3 = Color3.fromRGB(30, 20, 10)
-    espBtn.Text = "ESP Roles: " .. (A.ESPEnabled and "ON" or "OFF")
-    espBtn.TextColor3 = A.ESPEnabled and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(200, 200, 200)
-    espBtn.TextSize = 14
-    espBtn.Font = Enum.Font.GothamBold
-    espBtn.BorderSizePixel = 0
-    espBtn.LayoutOrder = 3
-    espBtn.Parent = content
-    Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 10)
-    espBtn.MouseButton1Click:Connect(function()
-        A.ESPEnabled = not A.ESPEnabled
-        if A.ESPEnabled then
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LP then createESP(p) end
-            end
-        else
-            for p, _ in pairs(ESPObj) do removeESP(p) end
-        end
-        espBtn.Text = "ESP Roles: " .. (A.ESPEnabled and "ON" or "OFF")
-        espBtn.TextColor3 = A.ESPEnabled and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(200, 200, 200)
-    end)
-
-    -- Auto Fight toggle
-    local fightBtn = Instance.new("TextButton")
-    fightBtn.Size = UDim2.new(1, 0, 0, 42)
-    fightBtn.BackgroundColor3 = Color3.fromRGB(30, 20, 10)
-    fightBtn.Text = "Auto Fight: " .. (A.AutoFight and "ON" or "OFF")
-    fightBtn.TextColor3 = A.AutoFight and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(200, 200, 200)
-    fightBtn.TextSize = 14
-    fightBtn.Font = Enum.Font.GothamBold
-    fightBtn.BorderSizePixel = 0
-    fightBtn.LayoutOrder = 4
-    fightBtn.Parent = content
-    Instance.new("UICorner", fightBtn).CornerRadius = UDim.new(0, 10)
-    fightBtn.MouseButton1Click:Connect(function()
-        A.AutoFight = not A.AutoFight
-        fightBtn.Text = "Auto Fight: " .. (A.AutoFight and "ON" or "OFF")
-        fightBtn.TextColor3 = A.AutoFight and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(200, 200, 200)
-    end)
-
-    -- Auto Kill toggle
-    local engBtn = Instance.new("TextButton")
-    engBtn.Size = UDim2.new(1, 0, 0, 42)
-    engBtn.BackgroundColor3 = Color3.fromRGB(30, 20, 10)
-    engBtn.Text = "Auto Kill: " .. (A.AutoEngageEnabled and "ON" or "OFF")
-    engBtn.TextColor3 = A.AutoEngageEnabled and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(200, 200, 200)
-    engBtn.TextSize = 14
-    engBtn.Font = Enum.Font.GothamBold
-    engBtn.BorderSizePixel = 0
-    engBtn.LayoutOrder = 5
-    engBtn.Parent = content
-    Instance.new("UICorner", engBtn).CornerRadius = UDim.new(0, 10)
-    engBtn.MouseButton1Click:Connect(function()
-        A.AutoEngageEnabled = not A.AutoEngageEnabled
-        if not A.AutoEngageEnabled then
-            A.AutoEngageKilling = false
-            SafeB.Position = Vector3.new(0, 99999, 0)
-        end
-        engBtn.Text = "Auto Kill: " .. (A.AutoEngageEnabled and "ON" or "OFF")
-        engBtn.TextColor3 = A.AutoEngageEnabled and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(200, 200, 200)
-    end)
-
-    -- Kill All button
-    local killBtn = Instance.new("TextButton")
-    killBtn.Size = UDim2.new(1, 0, 0, 42)
-    killBtn.BackgroundColor3 = Color3.fromRGB(180, 35, 35)
-    killBtn.Text = "⚔  KILL NOW"
-    killBtn.TextColor3 = Color3.new(1, 1, 1)
-    killBtn.TextSize = 14
-    killBtn.Font = Enum.Font.GothamBold
-    killBtn.BorderSizePixel = 0
-    killBtn.LayoutOrder = 6
-    killBtn.Parent = content
-    Instance.new("UICorner", killBtn).CornerRadius = UDim.new(0, 10)
-    killBtn.MouseButton1Click:Connect(function()
-        if not A.RoundActive then return end
-        if A.MyRole ~= "Murderer" and A.MyRole ~= "Sheriff" then return end
-        local targets = getTargets()
-        if #targets == 0 then
-            killBtn.Text = "❌ NO TARGET"
-            task.wait(1.5)
-            killBtn.Text = "⚔  KILL NOW"
-            return
-        end
-        A.AutoEngageKilling = false
-        if CurTween then CurTween:Cancel() CurTween = nil end
-        Plat.CFrame = CFrame.new(0, 99999, 0)
-        FarmBaseY = nil
-        stopVG()
-        task.wait(0.3)
-        if A.MyRole == "Murderer" then
-            pcall(pullAll) task.wait(0.3)
-            pcall(equipK) task.wait(0.2)
-            pcall(atkAll) task.wait(0.2)
-            pcall(killRem) task.wait(0.4)
-            pcall(unfreezeAll)
-        elseif A.MyRole == "Sheriff" then
-            local gun = findGun()
-            if gun and gun.Parent ~= LP.Character then
-                pcall(function() LP.Character.Humanoid:EquipTool(gun) end)
-            end
-            local target = targets[1]
-            local tr = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-            if tr then
-                for i = 1, 10 do
-                    workspace.CurrentCamera.CFrame = CFrame.lookAt(workspace.CurrentCamera.CFrame.Position, tr.Position)
-                    pcall(function()
-                        VU:CaptureController()
-                        VU:ClickButton1(Vector2.new(500, 500))
-                    end)
-                    task.wait(0.1)
-                end
-            end
-        end
-    end)
-
-    -- Status display
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1, 0, 0, 60)
-    statusLabel.BackgroundColor3 = Color3.fromRGB(20, 12, 5)
-    statusLabel.BackgroundTransparency = 0.3
-    statusLabel.BorderSizePixel = 0
-    statusLabel.Text = "🔴 OFF | Coins: 0/50"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
-    statusLabel.TextSize = 11
-    statusLabel.Font = Enum.Font.GothamMedium
-    statusLabel.LayoutOrder = 7
-    statusLabel.Parent = content
-    Instance.new("UICorner", statusLabel).CornerRadius = UDim.new(0, 10)
-
-    -- Farm toggle handler
-    farmBtn.MouseButton1Click:Connect(function()
-        A.AutoEnabled = not A.AutoEnabled
-        if A.AutoEnabled then
-            A.AutoEngageKilling = false
-            A.AutoEngageKilled = false
-            SafeB.Position = Vector3.new(0, 99999, 0)
-            CoinCache = {} CoinCacheTime = 0 FailedCoins = {} FarmBaseY = nil
-            task.spawn(farmLoop)
-        else
-            if CurTween then CurTween:Cancel() CurTween = nil end
-            if A.RoundActive then Plat.CFrame = CFrame.new(0, 99999, 0) end
-            FarmBaseY = nil
-            stopVG()
-            if A.RoundActive then unfreezeAll() end
-        end
-    end)
-
-    -- Sync UI
-    task.spawn(function()
-        while frame.Parent do
-            task.wait(0.5)
-            pcall(function()
-                if A.AutoEnabled then
-                    if A.RoundActive then
-                        farmBtn.Text = "⏹  STOP (FARMING)"
-                        farmBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-                    else
-                        farmBtn.Text = "🟡 ARMED (WAITING)"
-                        farmBtn.BackgroundColor3 = Color3.fromRGB(120, 90, 20)
-                    end
-                else
-                    farmBtn.Text = "▶  ARM FARM"
-                    farmBtn.BackgroundColor3 = OR
-                end
-
-                local state
-                if not A.AutoEnabled then state = "🔴 OFF"
-                elseif not A.RoundActive then state = "🟡 ARMED"
-                else state = "🟢 FARMING" end
-
-                local role = A.MyRole or "Unknown"
-                local icon = "❓"
-                if role == "Murderer" then icon = "🔪"
-                elseif role == "Sheriff" then icon = "🔫"
-                elseif role == "Innocent" then icon = "😇" end
-
-                local tgt = "—"
-                pcall(function()
-                    local t = getTargets()
-                    if #t > 0 then tgt = t[1].Name end
-                end)
-
-                local fightMark = A.AutoFight and " ⚔️" or ""
-                statusLabel.Text = state .. fightMark .. "\nCoins: " .. A.CollectedCoins .. "/" .. A.TargetCoins
-                    .. "\n" .. icon .. " " .. role .. " | 🎯 " .. tgt
-            end)
-        end
-    end)
-
-    return frame
-end
-
-buildMenu()
-
--- ═══════════════════════════════════════════════════════════════
--- FARM BUTTON (Standalone floating)
--- ═══════════════════════════════════════════════════════════════
-do
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "AMT_FarmBtn"
-    gui.ResetOnSpawn = false
-    gui.IgnoreGuiInset = true
-    gui.DisplayOrder = 999997
-    safeParent(gui)
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 170, 0, 60)
-    frame.Position = UDim2.new(0, 20, 0, 20)
-    frame.BackgroundColor3 = Color3.fromRGB(15, 10, 5)
-    frame.BackgroundTransparency = 0.1
-    frame.BorderSizePixel = 0
-    frame.Active = true
-    frame.Draggable = true
-    frame.Parent = gui
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 14)
-    local stroke = Instance.new("UIStroke", frame)
-    stroke.Color = OR
-    stroke.Thickness = 2
-    stroke.Transparency = 0.3
-
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -16, 1, -16)
-    btn.Position = UDim2.new(0, 8, 0, 8)
-    btn.BackgroundColor3 = OR
-    btn.Text = "▶  ARM"
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.TextSize = 17
-    btn.Font = Enum.Font.GothamBold
-    btn.BorderSizePixel = 0
-    btn.AutoButtonColor = false
-    btn.Parent = frame
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
-
-    local function refresh()
-        if not A.AutoEnabled then
-            btn.Text = "▶  ARM"
-            btn.BackgroundColor3 = OR
-            stroke.Color = OR
-        elseif not A.RoundActive then
-            btn.Text = "🟡 ARMED"
-            btn.BackgroundColor3 = Color3.fromRGB(120, 90, 20)
-            stroke.Color = Color3.fromRGB(255, 200, 60)
-        else
-            btn.Text = "⏹  STOP"
-            btn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-            stroke.Color = Color3.fromRGB(255, 80, 80)
-        end
-    end
-    refresh()
-
-    btn.MouseButton1Click:Connect(function()
-        A.AutoEnabled = not A.AutoEnabled
-        if A.AutoEnabled then
-            A.AutoEngageKilling = false
-            A.AutoEngageKilled = false
-            SafeB.Position = Vector3.new(0, 99999, 0)
-            CoinCache = {} CoinCacheTime = 0 FailedCoins = {} FarmBaseY = nil
-            task.spawn(farmLoop)
-        else
-            if CurTween then CurTween:Cancel() CurTween = nil end
-            if A.RoundActive then Plat.CFrame = CFrame.new(0, 99999, 0) end
-            FarmBaseY = nil
-            stopVG()
-            if A.RoundActive then unfreezeAll() end
-        end
-        refresh()
-    end)
-
-    task.spawn(function()
-        while frame.Parent do
-            task.wait(0.5)
-            refresh()
-        end
-    end)
-end
-
--- ═══════════════════════════════════════════════════════════════
--- HOTKEY (RightShift = Toggle armed)
--- ═══════════════════════════════════════════════════════════════
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.RightShift then
-        A.AutoEnabled = not A.AutoEnabled
-        if A.AutoEnabled then
-            A.AutoEngageKilling = false
-            A.AutoEngageKilled = false
-            SafeB.Position = Vector3.new(0, 99999, 0)
-            CoinCache = {} CoinCacheTime = 0 FailedCoins = {} FarmBaseY = nil
+        A.FarmEnabled = not A.FarmEnabled
+        if A.FarmEnabled then
+            releasePlayer()
+            CoinCache, FailedCoins = {}, {}
+            CoinCacheTime, LastFailedClear = 0, 0
             task.spawn(farmLoop)
         else
             if CurTween then CurTween:Cancel() CurTween = nil end
-            if A.RoundActive then Plat.CFrame = CFrame.new(0, 99999, 0) end
-            FarmBaseY = nil
             stopVG()
-            if A.RoundActive then unfreezeAll() end
+            if not SafeZoneActive then holdPlayer() end
         end
     end
 end)
 
-getgenv().AMTFarm = { A = A, farmLoop = farmLoop, getTargets = getTargets }
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if not A.FarmEnabled and not SafeZoneActive and isAlive() then
+            local ch = LP.Character
+            local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+            if hrp and (not IdleHold or IdleHold.Parent ~= hrp) then
+                holdPlayer()
+            end
+        end
+    end
+end)
+task.defer(function()
+    task.wait(1.5)
+    if not A.FarmEnabled and not SafeZoneActive then holdPlayer() end
+end)
 
-print("[AMT] ULTIMATE loaded — Farm AFK + ESP + Auto Fight")
+getgenv().Arkon = {
+    A = A, FX = FX,
+    farmLoop = farmLoop, killLoop = killLoop,
+    hasCoinsLeft = hasCoinsLeft, holdPlayer = holdPlayer,
+    releasePlayer = releasePlayer, goSafeZone = goSafeZone,
+    exitSafeZone = exitSafeZone, AntiKickLog = AntiKickLog,
+    SetSpeed = function(n) A.SpeedValue = math.clamp(tonumber(n) or 16, SPEED_MIN, SPEED_MAX) end,
+}
+
+print("[ARKON] v4.1 — UI FX ONLY ✓ | Safe Zone FIXED ✓")
